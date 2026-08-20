@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmossi &mdash; Units of Measure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0d0f1c;
+  --panel:#171b2e;
+  --panel-light:#202542;
+  --panel-lighter:#2a3050;
+  --brass:#c9a15c;
+  --brass-bright:#e4c384;
+  --verdigris:#5fa89a;
+  --garnet:#a83b4b;
+  --violet:#7a6ba8;
+  --parchment:#ede7d8;
+  --parchment-dim:#a8a398;
+  --line: rgba(201,161,92,0.18);
+  --line-bright: rgba(201,161,92,0.4);
+  --shadow: 0 12px 32px rgba(0,0,0,0.45);
+  --radius: 10px;
+  --font-display:'Cinzel', serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(95,168,154,0.10), transparent 45%),
+    radial-gradient(ellipse at 90% 10%, rgba(201,161,92,0.08), transparent 40%),
+    var(--void);
+  color:var(--parchment);
+  font-family:var(--font-body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--brass); color:var(--void);}
+a{color:var(--brass-bright);}
+button{font-family:var(--font-body); cursor:pointer;}
+input,select{font-family:var(--font-body);}
+
+.wrap{max-width:1200px; margin:0 auto; padding:28px 24px 80px;}
+
+.masthead{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:22px;
+  flex-wrap:wrap;
+}
+.masthead h1{
+  font-family:var(--font-display); font-weight:600; letter-spacing:0.04em;
+  font-size:28px; margin:0; color:var(--parchment);
+}
+.masthead h1 span{color:var(--brass-bright);}
+.masthead .tagline{
+  font-family:var(--font-mono); font-size:12px; color:var(--parchment-dim);
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+nav.pagenav{display:flex; gap:6px; margin-bottom:26px;}
+nav.pagenav a{
+  font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.05em; text-transform:uppercase;
+  text-decoration:none; color:var(--parchment-dim); padding:7px 14px; border:1px solid var(--line);
+  border-radius:6px; transition:border-color 0.15s ease, color 0.15s ease;
+}
+nav.pagenav a:hover{border-color:var(--brass); color:var(--brass-bright);}
+nav.pagenav a.active{border-color:var(--brass); color:var(--brass-bright); background:var(--panel-light);}
+
+.note-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:16px 20px; margin-bottom:24px; box-shadow:var(--shadow);
+  font-size:13px; color:var(--parchment-dim); line-height:1.6;
+}
+.note-card b{color:var(--brass-bright); font-weight:600;}
+.note-card code{
+  font-family:var(--font-mono); background:var(--void); padding:1px 6px; border-radius:4px;
+  color:var(--verdigris); font-size:12px;
+}
+
+.conv-grid{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+@media (max-width:880px){ .conv-grid{grid-template-columns:1fr;} }
+
+.card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:22px; box-shadow:var(--shadow);
+}
+.card h2{
+  font-family:var(--font-display); font-size:19px; margin:0 0 4px; color:var(--brass-bright); font-weight:600;
+}
+.card .sub{font-size:11.5px; color:var(--parchment-dim); margin-bottom:18px; font-family:var(--font-mono); letter-spacing:0.03em;}
+
+.input-row{display:flex; gap:8px; margin-bottom:6px;}
+.input-row input[type="text"]{
+  flex:1; background:var(--void); border:1px solid var(--line); color:var(--parchment);
+  border-radius:6px; padding:10px 12px; font-family:var(--font-mono); font-size:15px;
+}
+.input-row select{
+  background:var(--void); border:1px solid var(--line); color:var(--parchment);
+  border-radius:6px; padding:10px 10px; font-size:13px; min-width:150px;
+}
+.input-row input:focus, .input-row select:focus{outline:none; border-color:var(--brass);}
+.input-hint{font-size:11px; color:var(--parchment-dim); margin-bottom:18px; min-height:14px;}
+.input-hint.err{color:var(--garnet);}
+
+.result-group{margin-bottom:16px;}
+.result-group .label{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--parchment-dim);
+  margin-bottom:8px; display:flex; align-items:center; gap:8px;
+}
+.result-group .label::after{content:''; flex:1; height:1px; background:var(--line);}
+.result-table{display:flex; flex-direction:column; gap:1px; background:var(--line); border-radius:7px; overflow:hidden; border:1px solid var(--line);}
+.result-row{
+  display:flex; justify-content:space-between; align-items:baseline; background:var(--panel-light);
+  padding:9px 12px; font-size:13px;
+}
+.result-row .u{color:var(--parchment-dim); font-family:var(--font-mono); font-size:11.5px;}
+.result-row .v{font-family:var(--font-mono); color:var(--brass-bright); font-weight:500;}
+.result-row.is-source{background:var(--panel-lighter); border-left:2px solid var(--brass);}
+.result-row.is-source .v{color:var(--parchment);}
+
+.ladder{margin-top:22px;}
+.ladder .label{
+  font-size:10.5px; text-transform:uppercase; letter-spacing:0.08em; color:var(--parchment-dim);
+  margin-bottom:10px; display:flex; align-items:center; gap:8px;
+}
+.ladder .label::after{content:''; flex:1; height:1px; background:var(--line);}
+.ladder-row{
+  display:flex; justify-content:space-between; font-size:12px; padding:6px 0;
+  border-bottom:1px solid var(--line); font-family:var(--font-mono); color:var(--parchment-dim);
+}
+.ladder-row:last-child{border-bottom:none;}
+.ladder-row .name{color:var(--parchment); font-family:var(--font-body);}
+.ladder-row .factor{color:var(--verdigris);}
+
+footer{
+  text-align:center; color:var(--parchment-dim); font-size:11px; margin-top:36px;
+  font-family:var(--font-mono); letter-spacing:0.04em;
+}
+@media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1><span>Cosmossi</span> &mdash; Units of Measure</h1>
+      <div class="tagline">Length &amp; weight, base-24 to the core</div>
+    </div>
+  </div>
+
+  <nav class="pagenav">
+    <a href="index.html">Calendar</a>
+    <a href="units.html" class="active">Units</a>
+  </nav>
+
+  <div class="note-card">
+    <b>Reading the notation:</b> a fractional Cosmossi measurement is written <code>whole.fraction</code>, where the number after the point is how many of the <b>24</b> parts of the next unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. <code>323.23Mre</code> is one twenty-fourth short of a full 324Mre. A bare whole number like <code>324Mre</code> means exactly that, no remainder.
+  </div>
+
+  <div class="conv-grid">
+
+    <div class="card">
+      <h2>Length</h2>
+      <div class="sub">Human height is conventionally given in Delle</div>
+
+      <div class="input-row">
+        <input type="text" id="lenValue" value="28.8" placeholder="e.g. 28.8 or 170">
+        <select id="lenUnit"></select>
+      </div>
+      <div class="input-hint" id="lenHint"></div>
+
+      <div class="result-group">
+        <div class="label">Cosmossi units</div>
+        <div class="result-table" id="lenFictionalResults"></div>
+      </div>
+      <div class="result-group">
+        <div class="label">Real-world units</div>
+        <div class="result-table" id="lenRealResults"></div>
+      </div>
+
+      <div class="ladder">
+        <div class="label">The ladder</div>
+        <div id="lenLadder"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Weight</h2>
+      <div class="sub">Human weight is conventionally given in Rotitta (plural: Roritte)</div>
+
+      <div class="input-row">
+        <input type="text" id="wtValue" value="48.15" placeholder="e.g. 48.15 or 70">
+        <select id="wtUnit"></select>
+      </div>
+      <div class="input-hint" id="wtHint"></div>
+
+      <div class="result-group">
+        <div class="label">Cosmossi units</div>
+        <div class="result-table" id="wtFictionalResults"></div>
+      </div>
+      <div class="result-group">
+        <div class="label">Real-world units</div>
+        <div class="result-table" id="wtRealResults"></div>
+      </div>
+
+      <div class="ladder">
+        <div class="label">The ladder</div>
+        <div id="wtLadder"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Calendar of Cosmossi &middot; a local, offline worldbuilding tool &middot; <a href="index.html">back to the calendar</a></footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= UNIT TABLES ================= */
+/* Each fictional unit is exactly x24 the one above it. Base unit: cm (length), g (weight). */
+const LENGTH_UNITS = [
+  { key:"Dr",  label:"Delle",       group:"fictional", toBase:6 },
+  { key:"Ro",  label:"Roçenna",     group:"fictional", toBase:144 },
+  { key:"Cro", label:"Caroçenna",   group:"fictional", toBase:3456 },
+  { key:"Mre", label:"Mereta",      group:"fictional", toBase:82944 },
+  { key:"mm",  label:"millimeter",  group:"real",      toBase:0.1 },
+  { key:"cm",  label:"centimeter",  group:"real",      toBase:1 },
+  { key:"m",   label:"meter",       group:"real",      toBase:100 },
+  { key:"km",  label:"kilometer",   group:"real",      toBase:100000 },
+  { key:"mi",  label:"mile",        group:"real",      toBase:160934.4 }
+];
+const WEIGHT_UNITS = [
+  { key:"Crv", label:"Cruvezza",    group:"fictional", toBase:2.5 },
+  { key:"Sbl", label:"Sabelita",    group:"fictional", toBase:60 },
+  { key:"Rt",  label:"Rotitta",     group:"fictional", toBase:1440 },
+  { key:"Ars", label:"Arscetta",    group:"fictional", toBase:34560 },
+  { key:"Mnz", label:"Monezza",     group:"fictional", toBase:829440 },
+  { key:"mg",  label:"milligram",   group:"real",      toBase:0.001 },
+  { key:"g",   label:"gram",        group:"real",      toBase:1 },
+  { key:"kg",  label:"kilogram",    group:"real",      toBase:1000 },
+  { key:"t",   label:"metric ton",  group:"real",      toBase:1000000 },
+  { key:"lb",  label:"pound",       group:"real",      toBase:453.592 }
+];
+
+function byKey(table, key){ return table.find(u=>u.key===key); }
+
+/* ================= PARSE / FORMAT ================= */
+function parseFictionalInput(str){
+  str = String(str).trim();
+  if(str==='') return NaN;
+  const neg = str.startsWith('-');
+  if(neg) str = str.slice(1);
+  const parts = str.split('.');
+  if(parts.length>2) return NaN;
+  const whole = parts[0]==='' ? 0 : Number(parts[0]);
+  if(!Number.isFinite(whole) || whole<0) return NaN;
+  let frac = 0;
+  if(parts.length>1 && parts[1]!==''){
+    frac = Number(parts[1]);
+    if(!Number.isFinite(frac) || frac<0 || frac>23 || !Number.isInteger(frac)) return NaN;
+  }
+  const val = whole + frac/24;
+  return neg ? -val : val;
+}
+function formatFictional(amount, symbol){
+  if(!Number.isFinite(amount)) return '\u2014';
+  const sign = amount<0 ? '-' : '';
+  amount = Math.abs(amount);
+  let whole = Math.floor(amount + 1e-9);
+  let frac = Math.round((amount - whole) * 24);
+  if(frac>=24){ whole += 1; frac = 0; }
+  return frac===0 ? `${sign}${whole}${symbol}` : `${sign}${whole}.${frac}${symbol}`;
+}
+function formatReal(n){
+  if(!Number.isFinite(n)) return '\u2014';
+  if(Math.abs(n) >= 1000) return n.toLocaleString('en-US',{maximumFractionDigits:2});
+  if(Math.abs(n) > 0 && Math.abs(n) < 0.001) return n.toExponential(2);
+  return parseFloat(n.toFixed(4)).toString();
+}
+
+function convert(value, fromKey, toKey, table){
+  const base = value * byKey(table, fromKey).toBase;
+  return base / byKey(table, toKey).toBase;
+}
+
+/* ================= BUILD A CONVERTER SECTION ================= */
+function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, realResultsId, ladderId, defaultUnit }){
+  const unitSelect = document.getElementById(unitId);
+  const groups = { fictional: document.createElement('optgroup'), real: document.createElement('optgroup') };
+  groups.fictional.label = 'Cosmossi';
+  groups.real.label = 'Real world';
+  table.forEach(u=>{
+    const opt = document.createElement('option');
+    opt.value = u.key;
+    opt.textContent = `${u.label} (${u.key})`;
+    groups[u.group].appendChild(opt);
+  });
+  unitSelect.appendChild(groups.fictional);
+  unitSelect.appendChild(groups.real);
+  unitSelect.value = defaultUnit;
+
+  function render(){
+    const raw = document.getElementById(valueId).value;
+    const fromKey = unitSelect.value;
+    const fromUnit = byKey(table, fromKey);
+    const hint = document.getElementById(hintId);
+
+    let value;
+    if(fromUnit.group === 'fictional'){
+      value = parseFictionalInput(raw);
+      hint.textContent = 'Cosmossi units read whole.fraction \u2014 the part after the point is 1\u201323, out of 24.';
+      hint.classList.remove('err');
+    } else {
+      value = Number(raw);
+      hint.textContent = '';
+      hint.classList.remove('err');
+    }
+    if(!Number.isFinite(value)){
+      if(raw.trim()!==''){ hint.textContent = 'Enter a valid number' + (fromUnit.group==='fictional' ? ' (fraction must be a whole number 0\u201323).' : '.'); hint.classList.add('err'); }
+      document.getElementById(fictionalResultsId).innerHTML = '';
+      document.getElementById(realResultsId).innerHTML = '';
+      return;
+    }
+
+    const fictionalRows = table.filter(u=>u.group==='fictional').map(u=>{
+      const out = convert(value, fromKey, u.key, table);
+      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatFictional(out, u.key)}</span></div>`;
+    }).join('');
+    const realRows = table.filter(u=>u.group==='real').map(u=>{
+      const out = convert(value, fromKey, u.key, table);
+      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatReal(out)} ${u.key}</span></div>`;
+    }).join('');
+    document.getElementById(fictionalResultsId).innerHTML = fictionalRows;
+    document.getElementById(realResultsId).innerHTML = realRows;
+  }
+
+  document.getElementById(valueId).addEventListener('input', render);
+  unitSelect.addEventListener('change', ()=>{
+    // reset placeholder-ish default when switching group, keep value as-is otherwise
+    render();
+  });
+
+  // ladder
+  const fictionalOnly = table.filter(u=>u.group==='fictional');
+  document.getElementById(ladderId).innerHTML = fictionalOnly.map((u,i)=>{
+    const factor = i===0 ? `${u.toBase} ${table===LENGTH_UNITS?'cm':'g'}` : `\u00d724 ${fictionalOnly[i-1].label}`;
+    return `<div class="ladder-row"><span class="name">${u.label} <span style="color:var(--parchment-dim)">(${u.key})</span></span><span class="factor">${factor}</span></div>`;
+  }).join('');
+
+  render();
+}
+
+buildConverter({
+  table: LENGTH_UNITS,
+  valueId: 'lenValue', unitId: 'lenUnit', hintId: 'lenHint',
+  fictionalResultsId: 'lenFictionalResults', realResultsId: 'lenRealResults', ladderId: 'lenLadder',
+  defaultUnit: 'Dr'
+});
+buildConverter({
+  table: WEIGHT_UNITS,
+  valueId: 'wtValue', unitId: 'wtUnit', hintId: 'wtHint',
+  fictionalResultsId: 'wtFictionalResults', realResultsId: 'wtRealResults', ladderId: 'wtLadder',
+  defaultUnit: 'Rt'
+});
+
+})();
+</script>
+</body>
+</html>

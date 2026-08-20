@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cosmossi &mdash; Calendar of the Fifth Era</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --void:#0d0f1c;
+  --panel:#171b2e;
+  --panel-light:#202542;
+  --panel-lighter:#2a3050;
+  --brass:#c9a15c;
+  --brass-bright:#e4c384;
+  --verdigris:#5fa89a;
+  --garnet:#a83b4b;
+  --violet:#7a6ba8;
+  --parchment:#ede7d8;
+  --parchment-dim:#a8a398;
+  --line: rgba(201,161,92,0.18);
+  --line-bright: rgba(201,161,92,0.4);
+  --shadow: 0 12px 32px rgba(0,0,0,0.45);
+  --radius: 10px;
+  --font-display:'Cinzel', serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:
+    radial-gradient(ellipse at 20% -10%, rgba(95,168,154,0.10), transparent 45%),
+    radial-gradient(ellipse at 90% 10%, rgba(201,161,92,0.08), transparent 40%),
+    var(--void);
+  color:var(--parchment);
+  font-family:var(--font-body);
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--brass); color:var(--void);}
+a{color:var(--brass-bright);}
+button{font-family:var(--font-body); cursor:pointer;}
+input,select,textarea{font-family:var(--font-body);}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1200px; margin:0 auto; padding:28px 24px 80px;}
+
+.masthead{
+  display:flex; align-items:baseline; justify-content:space-between; gap:16px;
+  border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:28px;
+  flex-wrap:wrap;
+}
+.masthead h1{
+  font-family:var(--font-display); font-weight:600; letter-spacing:0.04em;
+  font-size:28px; margin:0; color:var(--parchment);
+}
+.masthead h1 span{color:var(--brass-bright);}
+.masthead .tagline{
+  font-family:var(--font-mono); font-size:12px; color:var(--parchment-dim);
+  letter-spacing:0.06em; text-transform:uppercase;
+}
+nav.pagenav{display:flex; gap:6px; margin-bottom:26px;}
+nav.pagenav a{
+  font-family:var(--font-mono); font-size:11.5px; letter-spacing:0.05em; text-transform:uppercase;
+  text-decoration:none; color:var(--parchment-dim); padding:7px 14px; border:1px solid var(--line);
+  border-radius:6px; transition:border-color 0.15s ease, color 0.15s ease;
+}
+nav.pagenav a:hover{border-color:var(--brass); color:var(--brass-bright);}
+nav.pagenav a.active{border-color:var(--brass); color:var(--brass-bright); background:var(--panel-light);}
+
+.layout{display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;}
+@media (max-width:900px){ .layout{grid-template-columns:1fr;} }
+
+/* ---------- orbit nav ---------- */
+.orbit-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:20px; margin-bottom:20px; box-shadow:var(--shadow);
+}
+.orbit-wrap{display:flex; align-items:center; gap:24px; flex-wrap:wrap; justify-content:center;}
+.orbit-svg{width:260px; height:260px; flex-shrink:0;}
+.orbit-ring{fill:none; stroke:var(--line-bright); stroke-width:1;}
+.orbit-tick{stroke:var(--parchment-dim); stroke-width:1; opacity:0.5;}
+.orbit-dot{
+  fill:var(--panel-lighter); stroke:var(--brass); stroke-width:1.5; cursor:pointer;
+  transition:fill 0.15s ease, r 0.15s ease;
+}
+.orbit-dot:hover{fill:var(--brass);}
+.orbit-dot.active{fill:var(--brass-bright); stroke:var(--brass-bright); r:7;}
+.orbit-dot.has-events{stroke:var(--garnet); stroke-width:2;}
+.orbit-center-label{
+  font-family:var(--font-display); font-size:15px; fill:var(--parchment); text-anchor:middle;
+}
+.orbit-center-sub{
+  font-family:var(--font-mono); font-size:10px; fill:var(--parchment-dim); text-anchor:middle;
+  letter-spacing:0.05em;
+}
+.orbit-side{flex:1; min-width:220px;}
+.era-pick{display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;}
+.era-pick label{font-size:11px; color:var(--parchment-dim); text-transform:uppercase; letter-spacing:0.08em;}
+.num-field{
+  background:var(--void); border:1px solid var(--line); color:var(--parchment);
+  border-radius:6px; padding:6px 10px; width:80px; font-family:var(--font-mono); font-size:14px;
+}
+.num-field:focus{outline:none; border-color:var(--brass);}
+.today-btn{
+  background:transparent; border:1px solid var(--brass); color:var(--brass-bright);
+  border-radius:6px; padding:7px 14px; font-size:12px; letter-spacing:0.04em;
+  text-transform:uppercase; transition:background 0.15s ease;
+}
+.today-btn:hover{background:var(--brass); color:var(--void);}
+.era-desc{
+  font-size:12.5px; line-height:1.55; color:var(--parchment-dim); margin-top:12px;
+  border-left:2px solid var(--line-bright); padding-left:12px;
+}
+.era-desc b{color:var(--brass-bright); font-weight:600;}
+
+/* ---------- calendar card ---------- */
+.cal-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:22px; box-shadow:var(--shadow);
+}
+.cal-header{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; gap:12px; flex-wrap:wrap;}
+.month-title{display:flex; align-items:baseline; gap:10px;}
+.month-title h2{
+  font-family:var(--font-display); font-size:24px; margin:0; color:var(--brass-bright); font-weight:600;
+}
+.month-title .datecode{font-family:var(--font-mono); font-size:12px; color:var(--parchment-dim);}
+.cal-nav{display:flex; gap:8px;}
+.nav-btn{
+  background:var(--panel-light); border:1px solid var(--line); color:var(--parchment);
+  width:34px; height:34px; border-radius:6px; font-size:16px; display:flex; align-items:center; justify-content:center;
+  transition:background 0.15s ease, border-color 0.15s ease;
+}
+.nav-btn:hover{background:var(--panel-lighter); border-color:var(--brass);}
+
+.weekday-row{display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:8px;}
+.weekday-row div{
+  font-family:var(--font-mono); font-size:11px; text-align:center; color:var(--parchment-dim);
+  letter-spacing:0.04em; padding-bottom:6px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:center; gap:4px;
+}
+.day-grid{display:grid; grid-template-columns:repeat(6,1fr); gap:8px;}
+.day-cell{
+  aspect-ratio:1/0.85; background:var(--panel-light); border:1px solid var(--line);
+  border-radius:7px; padding:8px 8px 6px; cursor:pointer; position:relative;
+  display:flex; flex-direction:column; justify-content:space-between;
+  transition:background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.day-cell:hover{background:var(--panel-lighter); border-color:var(--brass);}
+.day-cell.empty{background:transparent; border:none; cursor:default;}
+.day-cell.empty:hover{background:transparent;}
+.day-cell.today{border-color:var(--brass-bright); box-shadow:0 0 0 1px var(--brass-bright), 0 0 14px rgba(228,195,132,0.35);}
+.day-num{font-family:var(--font-mono); font-size:15px; color:var(--parchment);}
+.day-dots{display:flex; gap:3px; flex-wrap:wrap;}
+.day-dot{width:6px; height:6px; border-radius:50%;}
+
+/* ---------- sidebar ---------- */
+.side-card{
+  background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  padding:18px; margin-bottom:20px; box-shadow:var(--shadow);
+}
+.side-card h3{
+  font-family:var(--font-display); font-size:14px; margin:0 0 12px; color:var(--brass-bright);
+  letter-spacing:0.05em; text-transform:uppercase; font-weight:600;
+}
+.field{margin-bottom:10px;}
+.field label{display:block; font-size:11px; color:var(--parchment-dim); margin-bottom:4px; text-transform:uppercase; letter-spacing:0.05em;}
+.field input, .field select{
+  width:100%; background:var(--void); border:1px solid var(--line); color:var(--parchment);
+  border-radius:6px; padding:8px 10px; font-size:13px;
+}
+.field input:focus, .field select:focus{outline:none; border-color:var(--brass);}
+.field-row{display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;}
+.convert-result{
+  margin-top:10px; padding:10px 12px; background:var(--void); border-radius:6px;
+  font-family:var(--font-mono); font-size:13px; color:var(--brass-bright); border:1px solid var(--line-bright);
+  min-height:18px; line-height:1.5;
+}
+.btn{
+  background:var(--brass); color:var(--void); border:none; border-radius:6px; padding:8px 14px;
+  font-size:12.5px; font-weight:600; letter-spacing:0.02em; transition:background 0.15s ease;
+}
+.btn:hover{background:var(--brass-bright);}
+.btn.ghost{background:transparent; border:1px solid var(--line-bright); color:var(--parchment);}
+.btn.ghost:hover{border-color:var(--brass); color:var(--brass-bright);}
+.btn.small{padding:6px 10px; font-size:11.5px;}
+.btn-row{display:flex; gap:8px; flex-wrap:wrap;}
+
+.events-list{list-style:none; margin:0; padding:0; max-height:260px; overflow-y:auto;}
+.events-list li{
+  display:flex; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid var(--line);
+  font-size:12.5px;
+}
+.events-list li:last-child{border-bottom:none;}
+.ev-dot{width:8px; height:8px; border-radius:50%; margin-top:4px; flex-shrink:0;}
+.ev-meta{color:var(--parchment-dim); font-family:var(--font-mono); font-size:10.5px;}
+.ev-title{color:var(--parchment); font-weight:500;}
+.empty-note{color:var(--parchment-dim); font-size:12px; font-style:italic;}
+
+/* ---------- modal ---------- */
+.modal-backdrop{
+  position:fixed; inset:0; background:rgba(4,5,10,0.72); display:none;
+  align-items:center; justify-content:center; z-index:50; padding:20px;
+}
+.modal-backdrop.open{display:flex;}
+.modal{
+  background:var(--panel); border:1px solid var(--line-bright); border-radius:var(--radius);
+  width:100%; max-width:420px; padding:22px; box-shadow:var(--shadow);
+  max-height:85vh; overflow-y:auto;
+}
+.modal h3{font-family:var(--font-display); color:var(--brass-bright); margin:0 0 4px; font-size:18px;}
+.modal .datecode{font-family:var(--font-mono); font-size:12px; color:var(--parchment-dim); margin-bottom:16px; display:block;}
+.color-picks{display:flex; gap:8px; margin-bottom:14px;}
+.color-swatch{
+  width:26px; height:26px; border-radius:50%; cursor:pointer; border:2px solid transparent;
+}
+.color-swatch.selected{border-color:var(--parchment);}
+.modal-close{
+  position:absolute; top:0; right:0; background:none; border:none; color:var(--parchment-dim);
+  font-size:20px; padding:6px 10px;
+}
+.modal-inner{position:relative;}
+.existing-events{margin:14px 0; display:flex; flex-direction:column; gap:8px;}
+.existing-ev{
+  display:flex; justify-content:space-between; align-items:center; gap:8px;
+  background:var(--void); border:1px solid var(--line); border-radius:6px; padding:8px 10px;
+}
+.existing-ev .txt{font-size:12.5px;}
+.existing-ev .txt small{display:block; color:var(--parchment-dim); font-size:11px; margin-top:2px;}
+.del-btn{background:none; border:none; color:var(--garnet); font-size:16px; padding:2px 6px;}
+textarea.field-input{resize:vertical; min-height:50px;}
+
+footer{
+  text-align:center; color:var(--parchment-dim); font-size:11px; margin-top:36px;
+  font-family:var(--font-mono); letter-spacing:0.04em;
+}
+footer a{color:var(--parchment-dim); text-decoration:underline;}
+
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <div>
+      <h1><span>Cosmossi</span> &mdash; Calendar of the Fifth Era</h1>
+      <div class="tagline">Eli nomdi re cosmossi esteis</div>
+    </div>
+    <div class="tagline" id="realTodayLabel"></div>
+  </div>
+
+  <nav class="pagenav">
+    <a href="index.html" class="active">Calendar</a>
+    <a href="units.html">Units</a>
+  </nav>
+
+
+  <div class="layout">
+
+    <div class="main-col">
+      <div class="orbit-card">
+        <div class="orbit-wrap">
+          <svg class="orbit-svg" viewBox="0 0 260 260" id="orbitSvg" aria-label="Orbit of the 15 months"></svg>
+          <div class="orbit-side">
+            <div class="era-pick">
+              <label for="eraInput">Era</label>
+              <input type="number" id="eraInput" class="num-field" min="1" value="5">
+              <label for="yearInput">Year</label>
+              <input type="number" id="yearInput" class="num-field" min="0" max="999" value="300">
+              <button class="today-btn" id="todayBtn">Jump to today</button>
+            </div>
+            <div class="era-desc" id="eraDesc"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cal-card">
+        <div class="cal-header">
+          <div class="month-title">
+            <h2 id="monthName">Çuanede</h2>
+            <span class="datecode" id="monthDatecode">Year 300, Era 5</span>
+          </div>
+          <div class="cal-nav">
+            <button class="nav-btn" id="prevBtn" aria-label="Previous month">&#8592;</button>
+            <button class="nav-btn" id="nextBtn" aria-label="Next month">&#8594;</button>
+          </div>
+        </div>
+        <div class="weekday-row" id="weekdayRow"></div>
+        <div class="day-grid" id="dayGrid"></div>
+      </div>
+    </div>
+
+    <div class="side-col">
+      <div class="side-card">
+        <h3>Astral Converter</h3>
+        <div class="field">
+          <label for="realDateInput">Real-world date</label>
+          <input type="date" id="realDateInput">
+        </div>
+        <button class="btn small" id="convertToFictionalBtn">Convert &#8595; Cosmossi</button>
+        <div class="convert-result" id="toFictionalResult">&mdash;</div>
+
+        <div style="height:14px;"></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label for="fDay">Day</label>
+            <input type="number" id="fDay" class="num-field" style="width:100%" min="1" max="25" value="1">
+          </div>
+          <div class="field">
+            <label for="fMonth">Month</label>
+            <select id="fMonth" style="width:100%; padding:8px 6px; background:var(--void); border:1px solid var(--line); color:var(--parchment); border-radius:6px; font-size:12px;"></select>
+          </div>
+          <div class="field">
+            <label for="fYear">Year&#8211;Era</label>
+            <div style="display:flex; gap:4px;">
+              <input type="number" id="fYear" class="num-field" style="width:100%" min="0" max="999" value="300">
+              <input type="number" id="fEra" class="num-field" style="width:60px" min="1" value="5">
+            </div>
+          </div>
+        </div>
+        <button class="btn small" id="convertToRealBtn">Convert &#8595; Gregorian</button>
+        <div class="convert-result" id="toRealResult">&mdash;</div>
+      </div>
+
+      <div class="side-card">
+        <h3>Marked in <span id="eventsMonthLabel">this month</span></h3>
+        <ul class="events-list" id="eventsList"></ul>
+      </div>
+
+      <div class="side-card">
+        <h3>Almanac backup</h3>
+        <p style="font-size:12px; color:var(--parchment-dim); margin-top:0;">Your marked dates live in this browser only. Export a backup before clearing site data or switching browsers.</p>
+        <div class="btn-row">
+          <button class="btn ghost small" id="exportBtn">Export JSON</button>
+          <label class="btn ghost small" style="display:inline-block;">
+            Import JSON
+            <input type="file" id="importInput" accept="application/json" style="display:none;">
+          </label>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>Calendar of Cosmossi &middot; a local, offline worldbuilding tool &middot; your data stays in this browser</footer>
+</div>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <div class="modal-inner">
+      <button class="modal-close" id="modalClose">&times;</button>
+      <h3 id="modalTitle">Day</h3>
+      <span class="datecode" id="modalDatecode"></span>
+
+      <div class="existing-events" id="existingEvents"></div>
+
+      <div class="field">
+        <label for="evTitle">Add a mark</label>
+        <input type="text" id="evTitle" class="field-input" placeholder="Name this day&hellip;">
+      </div>
+      <div class="field">
+        <label for="evNote">Note (optional)</label>
+        <textarea id="evNote" class="field-input"></textarea>
+      </div>
+      <div class="color-picks" id="colorPicks"></div>
+      <button class="btn" id="addEventBtn">Add mark</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= DATA ================= */
+const MONTHS = [
+  { name:"Çuanede", days:24 },
+  { name:"Febreo", days:25 },
+  { name:"Asurro", days:24 },
+  { name:"Neisanne", days:25 },
+  { name:"Açarra", days:25 },
+  { name:"Sebina", days:24 },
+  { name:"Primechelli", days:24 },
+  { name:"Iuno", days:24 },
+  { name:"Iulia", days:24 },
+  { name:"Avessu", days:24 },
+  { name:"Edusechelli", days:24 },
+  { name:"Primeneimalle", days:25 },
+  { name:"Primelaure", days:24 },
+  { name:"Novum", days:24 },
+  { name:"Deccem", days:25 }
+];
+const YEAR_LENGTH = MONTHS.reduce((a,m)=>a+m.days,0); // 365
+const YEARS_PER_ERA = 1000;
+
+const WEEKDAYS = [
+  { name:"Caçe", icon:"\u263D" },   // moon day
+  { name:"Cheçe", icon:"\u2600" },  // sun day
+  { name:"Marçe", icon:"" },
+  { name:"Nerçe", icon:"" },
+  { name:"Talçe", icon:"" },
+  { name:"Sivaçe", icon:"" }
+];
+
+const ERAS = {
+  1:{ name:"Pre-Civilization Era", desc:"Predates recognizable cultures and countries &mdash; primitive societies of various humanoid species struggle to survive as geography and ecosystems remain in flux." },
+  2:{ name:"Rise of Sivasta", desc:"Small settlements share a common identity, culminating in the War of Unification and the formation of the united nation of Sivasta under the Pact of the People." },
+  3:{ name:"Sivasta's Ascendancy", desc:"Sivasta emerges as a dominant global power alongside Sirius and a Roman-parallel empire, in a Classical Era of alliances, trade, and conflict." },
+  4:{ name:"Medieval Era", desc:"Feudalism, chivalry, and magic define the age, with wizarding orders and legendary knights rising alongside technological and societal change." },
+  5:{ name:"Modern Era", desc:"Industrialization, technological advancement, and colonial expansion drive nations across the nine continents into competition and political turmoil." },
+  6:{ name:"Post-Modern Era", desc:"A futuristic age of advanced technology, space exploration, and interconnected societies, wrestling with artificial intelligence and the ethics of progress." }
+};
+function eraInfo(e){
+  return ERAS[e] || { name:"Uncharted Era", desc:"This era lies beyond the recorded history of Cosmossi &mdash; a chapter yet to be written." };
+}
+
+const COLORS = [
+  { key:"brass", hex:"#c9a15c" },
+  { key:"verdigris", hex:"#5fa89a" },
+  { key:"garnet", hex:"#a83b4b" },
+  { key:"violet", hex:"#7a6ba8" }
+];
+
+/* Anchor: real 2025-01-01 (Gregorian, UTC) == fictional 1 Çuanede, Year 300, Era 5 */
+const ANCHOR_REAL_MS = Date.UTC(2025,0,1);
+const ANCHOR_YEAR = 300, ANCHOR_ERA = 5, ANCHOR_MONTH_IDX = 0, ANCHOR_DAY = 1;
+
+/* ================= CALENDAR MATH ================= */
+function fictionalAbsoluteDay(yearInEra, era, monthIdx, day){
+  // yearInEra runs 0-999, so it doubles as "years fully elapsed within this era"
+  const yearsFullyElapsed = (era - 1) * YEARS_PER_ERA + yearInEra;
+  let daysBeforeMonth = 0;
+  for (let i=0;i<monthIdx;i++) daysBeforeMonth += MONTHS[i].days;
+  return yearsFullyElapsed * YEAR_LENGTH + daysBeforeMonth + day;
+}
+function absoluteDayToFictional(absDay){
+  const yearsElapsed = Math.floor((absDay - 1) / YEAR_LENGTH); // 0-indexed years since era 1, year 0
+  const dayOfYear = absDay - yearsElapsed * YEAR_LENGTH;
+  const era = Math.floor(yearsElapsed / YEARS_PER_ERA) + 1;
+  const yearInEra = yearsElapsed - (era - 1) * YEARS_PER_ERA; // 0-999
+  let remaining = dayOfYear, monthIdx = 0;
+  for (; monthIdx < MONTHS.length; monthIdx++){
+    if (remaining <= MONTHS[monthIdx].days) break;
+    remaining -= MONTHS[monthIdx].days;
+  }
+  return { yearInEra, era, monthIdx, day:remaining };
+}
+function weekdayIndexOf(absDay){
+  return ((absDay - 1) % 6 + 6) % 6;
+}
+const ANCHOR_ABS = fictionalAbsoluteDay(ANCHOR_YEAR, ANCHOR_ERA, ANCHOR_MONTH_IDX, ANCHOR_DAY);
+
+function realToFictional(realDateUTCms){
+  const diffDays = Math.round((realDateUTCms - ANCHOR_REAL_MS) / 86400000);
+  return absoluteDayToFictional(ANCHOR_ABS + diffDays);
+}
+function fictionalToReal(yearInEra, era, monthIdx, day){
+  const absDay = fictionalAbsoluteDay(yearInEra, era, monthIdx, day);
+  const diffDays = absDay - ANCHOR_ABS;
+  return new Date(ANCHOR_REAL_MS + diffDays * 86400000);
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function fictionalDateCode(yearInEra, era, monthIdx, day){
+  return `${pad2(day)}/${pad2(monthIdx+1)}/${String(yearInEra).padStart(3,'0')}-${pad2(era)}`;
+}
+function formatRealDate(d){
+  return d.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
+}
+
+/* ================= STATE ================= */
+const todayFictional = realToFictional(Date.now());
+let view = loadView() || { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx };
+let selectedColor = COLORS[0].key;
+let modalDayKey = null;
+
+function loadView(){
+  try{
+    const raw = localStorage.getItem('cosmossiView');
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveView(){
+  try{ localStorage.setItem('cosmossiView', JSON.stringify(view)); }catch(e){}
+}
+function loadEvents(){
+  try{
+    const raw = localStorage.getItem('cosmossiEvents');
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function saveEvents(events){
+  try{ localStorage.setItem('cosmossiEvents', JSON.stringify(events)); }catch(e){
+    alert('Could not save &mdash; your browser storage may be full or blocked.');
+  }
+}
+let EVENTS = loadEvents();
+function dayKey(era, yearInEra, monthIdx, day){ return `${era}|${yearInEra}|${monthIdx}|${day}`; }
+
+/* ================= RENDER: masthead ================= */
+document.getElementById('realTodayLabel').textContent =
+  'Today (real world): ' + new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}) +
+  '  \u2192  ' + fictionalDateCode(todayFictional.yearInEra, todayFictional.era, todayFictional.monthIdx, todayFictional.day);
+
+/* ================= RENDER: orbit ================= */
+function renderOrbit(){
+  const svg = document.getElementById('orbitSvg');
+  const cx=130, cy=130, r=95;
+  let html = `<circle class="orbit-ring" cx="${cx}" cy="${cy}" r="${r}"></circle>`;
+  const monthHasEvents = MONTHS.map((m,i)=>{
+    for(let d=1; d<=m.days; d++){
+      if(EVENTS[dayKey(view.era, view.yearInEra, i, d)]?.length) return true;
+    }
+    return false;
+  });
+  MONTHS.forEach((m,i)=>{
+    const angle = (-90 + i * (360/15)) * Math.PI/180;
+    const x = cx + r*Math.cos(angle);
+    const y = cy + r*Math.sin(angle);
+    const tx = cx + (r+14)*Math.cos(angle);
+    const ty = cy + (r+14)*Math.sin(angle);
+    const active = i===view.monthIdx;
+    html += `<line class="orbit-tick" x1="${cx+(r-6)*Math.cos(angle)}" y1="${cy+(r-6)*Math.sin(angle)}" x2="${cx+(r+6)*Math.cos(angle)}" y2="${cy+(r+6)*Math.sin(angle)}"></line>`;
+    html += `<circle class="orbit-dot${active?' active':''}${monthHasEvents[i]?' has-events':''}" data-month="${i}" cx="${x}" cy="${y}" r="5"><title>${m.name} &mdash; ${m.days} days</title></circle>`;
+  });
+  html += `<text class="orbit-center-label" x="${cx}" y="${cy-4}">${MONTHS[view.monthIdx].name}</text>`;
+  html += `<text class="orbit-center-sub" x="${cx}" y="${cy+14}">${MONTHS[view.monthIdx].days} DAYS &middot; ERA ${view.era}</text>`;
+  svg.innerHTML = html;
+  svg.querySelectorAll('.orbit-dot').forEach(dot=>{
+    dot.addEventListener('click', ()=>{
+      view.monthIdx = parseInt(dot.getAttribute('data-month'),10);
+      saveView(); renderAll();
+    });
+  });
+}
+
+/* ================= RENDER: era controls ================= */
+function renderEraControls(){
+  document.getElementById('eraInput').value = view.era;
+  document.getElementById('yearInput').value = view.yearInEra;
+  const info = eraInfo(view.era);
+  document.getElementById('eraDesc').innerHTML = `<b>Era ${view.era}: ${info.name}.</b> ${info.desc}`;
+}
+
+/* ================= RENDER: calendar grid ================= */
+function renderCalendar(){
+  const month = MONTHS[view.monthIdx];
+  document.getElementById('monthName').textContent = month.name;
+  document.getElementById('monthDatecode').textContent = `Year ${view.yearInEra}, Era ${view.era} \u00b7 ${month.days} days`;
+
+  const weekdayRow = document.getElementById('weekdayRow');
+  weekdayRow.innerHTML = WEEKDAYS.map(w=>`<div>${w.icon?w.icon+' ':''}${w.name}</div>`).join('');
+
+  const firstAbs = fictionalAbsoluteDay(view.yearInEra, view.era, view.monthIdx, 1);
+  const leadEmpty = weekdayIndexOf(firstAbs);
+
+  const grid = document.getElementById('dayGrid');
+  let html = '';
+  for(let i=0;i<leadEmpty;i++) html += `<div class="day-cell empty"></div>`;
+  for(let d=1; d<=month.days; d++){
+    const key = dayKey(view.era, view.yearInEra, view.monthIdx, d);
+    const dayEvents = EVENTS[key] || [];
+    const isToday = (view.era===todayFictional.era && view.yearInEra===todayFictional.yearInEra &&
+                      view.monthIdx===todayFictional.monthIdx && d===todayFictional.day);
+    const dots = dayEvents.slice(0,6).map(ev=>{
+      const c = COLORS.find(c=>c.key===ev.color) || COLORS[0];
+      return `<span class="day-dot" style="background:${c.hex}"></span>`;
+    }).join('');
+    html += `<div class="day-cell${isToday?' today':''}" data-day="${d}">
+      <span class="day-num">${d}</span>
+      <span class="day-dots">${dots}</span>
+    </div>`;
+  }
+  grid.innerHTML = html;
+  grid.querySelectorAll('.day-cell:not(.empty)').forEach(cell=>{
+    cell.addEventListener('click', ()=> openModal(parseInt(cell.getAttribute('data-day'),10)));
+  });
+}
+
+/* ================= RENDER: events sidebar ================= */
+function renderEventsSidebar(){
+  document.getElementById('eventsMonthLabel').textContent = MONTHS[view.monthIdx].name + ' ' + view.yearInEra;
+  const list = document.getElementById('eventsList');
+  const month = MONTHS[view.monthIdx];
+  let items = [];
+  for(let d=1; d<=month.days; d++){
+    const key = dayKey(view.era, view.yearInEra, view.monthIdx, d);
+    (EVENTS[key]||[]).forEach(ev=> items.push({ d, ev }));
+  }
+  if(items.length===0){
+    list.innerHTML = `<li class="empty-note">No marks yet this month. Click a day to add one.</li>`;
+    return;
+  }
+  list.innerHTML = items.map(({d,ev})=>{
+    const c = COLORS.find(c=>c.key===ev.color) || COLORS[0];
+    return `<li>
+      <span class="ev-dot" style="background:${c.hex}"></span>
+      <span>
+        <span class="ev-title">${escapeHtml(ev.title)}</span>
+        <span class="ev-meta"> &middot; ${fictionalDateCode(view.yearInEra, view.era, view.monthIdx, d)}</span>
+      </span>
+    </li>`;
+  }).join('');
+}
+function escapeHtml(s){
+  const div = document.createElement('div');
+  div.textContent = s;
+  return div.innerHTML;
+}
+
+/* ================= MODAL ================= */
+function openModal(day){
+  modalDayKey = dayKey(view.era, view.yearInEra, view.monthIdx, day);
+  document.getElementById('modalTitle').textContent = `${MONTHS[view.monthIdx].name} ${day}`;
+  document.getElementById('modalDatecode').textContent = fictionalDateCode(view.yearInEra, view.era, view.monthIdx, day) +
+    '  \u2192  ' + formatRealDate(fictionalToReal(view.yearInEra, view.era, view.monthIdx, day));
+  renderExistingEvents();
+  document.getElementById('evTitle').value = '';
+  document.getElementById('evNote').value = '';
+  document.getElementById('modalBackdrop').classList.add('open');
+  document.getElementById('evTitle').focus();
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').classList.remove('open');
+  modalDayKey = null;
+}
+function renderExistingEvents(){
+  const box = document.getElementById('existingEvents');
+  const list = EVENTS[modalDayKey] || [];
+  if(list.length===0){ box.innerHTML=''; return; }
+  box.innerHTML = list.map((ev,idx)=>{
+    const c = COLORS.find(c=>c.key===ev.color) || COLORS[0];
+    return `<div class="existing-ev">
+      <div class="txt">
+        <span style="color:${c.hex}">&#9679;</span> ${escapeHtml(ev.title)}
+        ${ev.note?`<small>${escapeHtml(ev.note)}</small>`:''}
+      </div>
+      <button class="del-btn" data-idx="${idx}" title="Remove">&times;</button>
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = parseInt(btn.getAttribute('data-idx'),10);
+      EVENTS[modalDayKey].splice(idx,1);
+      if(EVENTS[modalDayKey].length===0) delete EVENTS[modalDayKey];
+      saveEvents(EVENTS);
+      renderExistingEvents(); renderCalendar(); renderEventsSidebar(); renderOrbit();
+    });
+  });
+}
+function renderColorPicks(){
+  const box = document.getElementById('colorPicks');
+  box.innerHTML = COLORS.map(c=>
+    `<span class="color-swatch${c.key===selectedColor?' selected':''}" style="background:${c.hex}" data-color="${c.key}"></span>`
+  ).join('');
+  box.querySelectorAll('.color-swatch').forEach(sw=>{
+    sw.addEventListener('click', ()=>{
+      selectedColor = sw.getAttribute('data-color');
+      renderColorPicks();
+    });
+  });
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modalBackdrop').addEventListener('click', e=>{
+  if(e.target.id==='modalBackdrop') closeModal();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') closeModal();
+});
+document.getElementById('addEventBtn').addEventListener('click', ()=>{
+  const title = document.getElementById('evTitle').value.trim();
+  if(!title){ document.getElementById('evTitle').focus(); return; }
+  const note = document.getElementById('evNote').value.trim();
+  if(!EVENTS[modalDayKey]) EVENTS[modalDayKey] = [];
+  EVENTS[modalDayKey].push({ title, note, color:selectedColor });
+  saveEvents(EVENTS);
+  document.getElementById('evTitle').value='';
+  document.getElementById('evNote').value='';
+  renderExistingEvents(); renderCalendar(); renderEventsSidebar(); renderOrbit();
+});
+
+/* ================= NAV ================= */
+function goToMonth(delta){
+  let m = view.monthIdx + delta;
+  if(m<0){ m = MONTHS.length-1; view.yearInEra -= 1; if(view.yearInEra<0){ view.yearInEra=999; view.era -=1; if(view.era<1) view.era=1; } }
+  else if(m>=MONTHS.length){ m = 0; view.yearInEra += 1; if(view.yearInEra>999){ view.yearInEra=0; view.era += 1; } }
+  view.monthIdx = m;
+  saveView(); renderAll();
+}
+document.getElementById('prevBtn').addEventListener('click', ()=>goToMonth(-1));
+document.getElementById('nextBtn').addEventListener('click', ()=>goToMonth(1));
+document.getElementById('eraInput').addEventListener('change', e=>{
+  view.era = Math.max(1, parseInt(e.target.value,10)||1);
+  saveView(); renderAll();
+});
+document.getElementById('yearInput').addEventListener('change', e=>{
+  view.yearInEra = Math.min(999, Math.max(0, parseInt(e.target.value,10)||0));
+  saveView(); renderAll();
+});
+document.getElementById('todayBtn').addEventListener('click', ()=>{
+  view = { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx };
+  saveView(); renderAll();
+});
+
+/* ================= CONVERTER ================= */
+const fMonthSelect = document.getElementById('fMonth');
+fMonthSelect.innerHTML = MONTHS.map((m,i)=>`<option value="${i}">${m.name}</option>`).join('');
+
+document.getElementById('convertToFictionalBtn').addEventListener('click', ()=>{
+  const val = document.getElementById('realDateInput').value;
+  const out = document.getElementById('toFictionalResult');
+  if(!val){ out.textContent = 'Pick a real-world date first.'; return; }
+  const [y,m,d] = val.split('-').map(Number);
+  const ms = Date.UTC(y, m-1, d);
+  const f = realToFictional(ms);
+  out.innerHTML = `${fictionalDateCode(f.yearInEra, f.era, f.monthIdx, f.day)}<br>${MONTHS[f.monthIdx].name} ${f.day}, Year ${f.yearInEra} &middot; ${WEEKDAYS[weekdayIndexOf(fictionalAbsoluteDay(f.yearInEra,f.era,f.monthIdx,f.day))].name}`;
+});
+document.getElementById('convertToRealBtn').addEventListener('click', ()=>{
+  const d = parseInt(document.getElementById('fDay').value,10);
+  const mIdx = parseInt(fMonthSelect.value,10);
+  const y = parseInt(document.getElementById('fYear').value,10);
+  const era = parseInt(document.getElementById('fEra').value,10);
+  const out = document.getElementById('toRealResult');
+  const maxDays = MONTHS[mIdx].days;
+  if(!d || d<1 || d>maxDays){ out.textContent = `${MONTHS[mIdx].name} only has ${maxDays} days.`; return; }
+  if(isNaN(y) || y<0 || y>999 || !era || era<1){ out.textContent = 'Enter a valid year (0-999) and era.'; return; }
+  const real = fictionalToReal(y, era, mIdx, d);
+  out.textContent = formatRealDate(real);
+});
+
+/* ================= EXPORT / IMPORT ================= */
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  const blob = new Blob([JSON.stringify(EVENTS,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'cosmossi-calendar-backup.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+document.getElementById('importInput').addEventListener('change', e=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const incoming = JSON.parse(reader.result);
+      EVENTS = Object.assign({}, EVENTS, incoming);
+      saveEvents(EVENTS);
+      renderAll();
+      alert('Marks imported.');
+    }catch(err){
+      alert('That file could not be read as a valid backup.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+/* ================= INIT ================= */
+function renderAll(){
+  renderOrbit();
+  renderEraControls();
+  renderCalendar();
+  renderEventsSidebar();
+  renderColorPicks();
+}
+renderAll();
+
+})();
+</script>
+</body>
+</html>
