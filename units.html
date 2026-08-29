@@ -119,6 +119,7 @@ nav.pagenav a.active{border-color:var(--brass); color:var(--brass-bright); backg
 }
 .result-row .u{color:var(--parchment-dim); font-family:var(--font-mono); font-size:11.5px;}
 .result-row .v{font-family:var(--font-mono); color:var(--brass-bright); font-weight:500;}
+.result-row .v .u-sym{color:var(--parchment-dim); font-weight:400; font-size:0.82em; margin-left:5px; letter-spacing:0.02em;}
 .result-row.is-source{background:var(--panel-lighter); border-left:2px solid var(--brass);}
 .result-row.is-source .v{color:var(--parchment);}
 
@@ -159,7 +160,7 @@ footer{
   </nav>
 
   <div class="note-card">
-    <b>Reading the notation:</b> a fractional Cosmossi measurement is written <code>whole.fraction</code>, where the number after the point is how many of the <b>24</b> parts of the next unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. <code>323.23Mre</code> is one twenty-fourth short of a full 324Mre. A bare whole number like <code>324Mre</code> means exactly that, no remainder. When a measurement needs to be finer than one twenty-fourth of a whole unit, it drops to the next named sub-unit rather than stacking fractions &mdash; for length, that sub-unit is the <b>Sadelle (Sdr)</b>, 24 of which make one Delle.
+    <b>Reading the notation:</b> a Cosmossi measurement is written <code>whole.fraction</code> by default, where the number after the point is how many of the <b>24</b> parts of the next whole unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. A bare whole number like <code>324Mre</code> means exactly that, no remainder. When one level of 1&frasl;24 isn't precise enough, the notation extends with further <code>.segments</code>, each one 24ths of what's left over &mdash; the same way a clock reads <code>8:40</code> as the everyday form but can extend to <code>8:40.21.29</code> when finer precision is actually needed. So <code>1.23.12.5Mre</code> is 1 whole, plus 23&frasl;24, plus 12&frasl;24 of that 24th, plus 5&frasl;24 of <i>that</i>. Every result below shows only as many segments as it actually needs &mdash; extra <code>.0</code> segments are dropped. Separately, length also has a smaller <b>named</b> unit for everyday speech, the <b>Sadelle (Sdr)</b>: 24 Sadelle make one Delle, the same way 24 Delle make one Roçenna.
   </div>
 
   <div class="conv-grid">
@@ -253,31 +254,49 @@ const WEIGHT_UNITS = [
 function byKey(table, key){ return table.find(u=>u.key===key); }
 
 /* ================= PARSE / FORMAT ================= */
+/* Cosmossi numbers read whole.fraction by default, where fraction is 0-23 (out of 24).
+   When more precision than 1/24 is needed, further segments extend the chain, each one
+   representing 24ths of the previous remainder — exactly like a clock reading 8:40 as the
+   everyday form, extendable to 8:40.21.29 when finer precision actually matters. */
+const MAX_FRACTION_DEPTH = 4; // whole + up to 4 nested /24 levels
+
 function parseFictionalInput(str){
   str = String(str).trim();
   if(str==='') return NaN;
   const neg = str.startsWith('-');
   if(neg) str = str.slice(1);
   const parts = str.split('.');
-  if(parts.length>2) return NaN;
   const whole = parts[0]==='' ? 0 : Number(parts[0]);
-  if(!Number.isFinite(whole) || whole<0) return NaN;
-  let frac = 0;
-  if(parts.length>1 && parts[1]!==''){
-    frac = Number(parts[1]);
-    if(!Number.isFinite(frac) || frac<0 || frac>23 || !Number.isInteger(frac)) return NaN;
+  if(!Number.isFinite(whole) || whole<0 || !Number.isInteger(whole)) return NaN;
+  let val = whole;
+  let scale = 1/24;
+  for(let i=1;i<parts.length;i++){
+    if(parts[i]==='') return NaN;
+    const seg = Number(parts[i]);
+    if(!Number.isFinite(seg) || seg<0 || seg>23 || !Number.isInteger(seg)) return NaN;
+    val += seg * scale;
+    scale /= 24;
   }
-  const val = whole + frac/24;
   return neg ? -val : val;
 }
-function formatFictional(amount, symbol){
+function formatFictional(amount){
   if(!Number.isFinite(amount)) return '\u2014';
   const sign = amount<0 ? '-' : '';
   amount = Math.abs(amount);
   let whole = Math.floor(amount + 1e-9);
-  let frac = Math.round((amount - whole) * 24);
-  if(frac>=24){ whole += 1; frac = 0; }
-  return frac===0 ? `${sign}${whole}${symbol}` : `${sign}${whole}.${frac}${symbol}`;
+  let frac = amount - whole;
+  const segments = [];
+  for(let i=0; i<MAX_FRACTION_DEPTH; i++){
+    frac *= 24;
+    let seg = Math.floor(frac + 1e-7);
+    if(seg>=24) seg = 23;
+    frac -= seg;
+    segments.push(seg);
+    if(frac < 1e-6) break; // remainder is exact at this precision, no need to go deeper
+  }
+  while(segments.length && segments[segments.length-1]===0) segments.pop();
+  const wholeStr = whole.toLocaleString('en-US');
+  return segments.length===0 ? `${sign}${wholeStr}` : `${sign}${wholeStr}.${segments.join('.')}`;
 }
 function formatReal(n){
   if(!Number.isFinite(n)) return '\u2014';
@@ -316,7 +335,7 @@ function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, re
     let value;
     if(fromUnit.group === 'fictional'){
       value = parseFictionalInput(raw);
-      hint.textContent = 'Cosmossi units read whole.fraction \u2014 the part after the point is 1\u201323, out of 24.';
+      hint.textContent = 'Whole.fraction, each segment 0\u201323 out of 24 \u2014 add more .segments for finer precision, e.g. 1.23.12.5.';
       hint.classList.remove('err');
     } else {
       value = Number(raw);
@@ -332,7 +351,7 @@ function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, re
 
     const fictionalRows = table.filter(u=>u.group==='fictional').map(u=>{
       const out = convert(value, fromKey, u.key, table);
-      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatFictional(out, u.key)}</span></div>`;
+      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatFictional(out)}<span class="u-sym">${u.key}</span></span></div>`;
     }).join('');
     const realRows = table.filter(u=>u.group==='real').map(u=>{
       const out = convert(value, fromKey, u.key, table);
