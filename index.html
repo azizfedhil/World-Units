@@ -48,6 +48,20 @@ input,select,textarea{font-family:var(--font-body);}
 /* ---------- layout ---------- */
 .wrap{max-width:1200px; margin:0 auto; padding:28px 24px 80px;}
 
+.today-box{
+  background:var(--panel); border:1px solid var(--line-bright); border-radius:var(--radius);
+  padding:14px 20px; margin-bottom:20px; box-shadow:var(--shadow);
+  display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap;
+}
+.today-box-label{
+  font-family:var(--font-mono); font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--parchment-dim);
+}
+.today-box-date{
+  font-family:var(--font-display); font-size:20px; font-weight:600; color:var(--brass-bright);
+  letter-spacing:0.01em;
+}
+
 .masthead{
   display:flex; align-items:baseline; justify-content:space-between; gap:16px;
   border-bottom:1px solid var(--line); padding-bottom:18px; margin-bottom:28px;
@@ -260,6 +274,10 @@ footer a{color:var(--parchment-dim); text-decoration:underline;}
     <a href="units.html">Units</a>
   </nav>
 
+  <div class="today-box" id="todayBox">
+    <span class="today-box-label">Today in Cosmossi</span>
+    <span class="today-box-date" id="todayBoxDate">&mdash;</span>
+  </div>
 
   <div class="layout">
 
@@ -473,6 +491,14 @@ function fictionalDateCode(yearInEra, era, monthIdx, day){
 function formatRealDate(d){
   return d.toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
 }
+function ordinal(n){
+  const suf = ["th","st","nd","rd"], v = n % 100;
+  return n + (suf[(v-20)%10] || suf[v] || suf[0]);
+}
+function fullFictionalDate(yearInEra, era, monthIdx, day){
+  const weekdayName = WEEKDAYS[weekdayIndexOf(fictionalAbsoluteDay(yearInEra, era, monthIdx, day))].name;
+  return `${weekdayName}, the ${ordinal(day)} of ${MONTHS[monthIdx].name}, ${String(yearInEra).padStart(3,'0')}-${era}`;
+}
 
 /* ================= STATE ================= */
 const todayFictional = realToFictional(Date.now());
@@ -507,6 +533,9 @@ function dayKey(era, yearInEra, monthIdx, day){ return `${era}|${yearInEra}|${mo
 document.getElementById('realTodayLabel').textContent =
   'Today (real world): ' + new Date().toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}) +
   '  \u2192  ' + fictionalDateCode(todayFictional.yearInEra, todayFictional.era, todayFictional.monthIdx, todayFictional.day);
+
+document.getElementById('todayBoxDate').textContent =
+  fullFictionalDate(todayFictional.yearInEra, todayFictional.era, todayFictional.monthIdx, todayFictional.day);
 
 /* ================= RENDER: orbit ================= */
 function renderOrbit(){

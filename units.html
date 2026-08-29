@@ -159,14 +159,14 @@ footer{
   </nav>
 
   <div class="note-card">
-    <b>Reading the notation:</b> a fractional Cosmossi measurement is written <code>whole.fraction</code>, where the number after the point is how many of the <b>24</b> parts of the next unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. <code>323.23Mre</code> is one twenty-fourth short of a full 324Mre. A bare whole number like <code>324Mre</code> means exactly that, no remainder.
+    <b>Reading the notation:</b> a fractional Cosmossi measurement is written <code>whole.fraction</code>, where the number after the point is how many of the <b>24</b> parts of the next unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. <code>323.23Mre</code> is one twenty-fourth short of a full 324Mre. A bare whole number like <code>324Mre</code> means exactly that, no remainder. When a measurement needs to be finer than one twenty-fourth of a whole unit, it drops to the next named sub-unit rather than stacking fractions &mdash; for length, that sub-unit is the <b>Sadelle (Sdr)</b>, 24 of which make one Delle.
   </div>
 
   <div class="conv-grid">
 
     <div class="card">
       <h2>Length</h2>
-      <div class="sub">Human height is conventionally given in Delle</div>
+      <div class="sub">Human height is conventionally given in Delle &middot; Sadelle (Sdr) is the finer sub-unit, 1 Delle = 24 Sadelle</div>
 
       <div class="input-row">
         <input type="text" id="lenValue" value="28.8" placeholder="e.g. 28.8 or 170">
@@ -226,6 +226,7 @@ footer{
 /* ================= UNIT TABLES ================= */
 /* Each fictional unit is exactly x24 the one above it. Base unit: cm (length), g (weight). */
 const LENGTH_UNITS = [
+  { key:"Sdr", label:"Sadelle",     group:"fictional", toBase:0.25 },
   { key:"Dr",  label:"Delle",       group:"fictional", toBase:6 },
   { key:"Ro",  label:"Roçenna",     group:"fictional", toBase:144 },
   { key:"Cro", label:"Caroçenna",   group:"fictional", toBase:3456 },
