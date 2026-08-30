@@ -112,6 +112,12 @@ nav.pagenav a.active{border-color:var(--brass); color:var(--brass-bright); backg
   margin-bottom:8px; display:flex; align-items:center; gap:8px;
 }
 .result-group .label::after{content:''; flex:1; height:1px; background:var(--line);}
+.precision-toggle{
+  display:flex; align-items:center; gap:6px; font-size:11.5px; color:var(--parchment-dim);
+  margin-bottom:8px; cursor:pointer; user-select:none;
+}
+.precision-toggle input{accent-color:var(--brass); cursor:pointer;}
+.precision-toggle:hover{color:var(--brass-bright);}
 .result-table{display:flex; flex-direction:column; gap:1px; background:var(--line); border-radius:7px; overflow:hidden; border:1px solid var(--line);}
 .result-row{
   display:flex; justify-content:space-between; align-items:baseline; background:var(--panel-light);
@@ -160,7 +166,7 @@ footer{
   </nav>
 
   <div class="note-card">
-    <b>Reading the notation:</b> a Cosmossi measurement is written <code>whole.fraction</code> by default, where the number after the point is how many of the <b>24</b> parts of the next whole unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. A bare whole number like <code>324Mre</code> means exactly that, no remainder. When one level of 1&frasl;24 isn't precise enough, the notation extends with further <code>.segments</code>, each one 24ths of what's left over &mdash; the same way a clock reads <code>8:40</code> as the everyday form but can extend to <code>8:40.21.29</code> when finer precision is actually needed. So <code>1.23.12.5Mre</code> is 1 whole, plus 23&frasl;24, plus 12&frasl;24 of that 24th, plus 5&frasl;24 of <i>that</i>. Every result below shows only as many segments as it actually needs &mdash; extra <code>.0</code> segments are dropped. Separately, length also has a smaller <b>named</b> unit for everyday speech, the <b>Sadelle (Sdr)</b>: 24 Sadelle make one Delle, the same way 24 Delle make one Roçenna.
+    <b>Reading the notation:</b> a Cosmossi measurement is written <code>whole.fraction</code> by default, where the number after the point is how many of the <b>24</b> parts of the next whole unit you have &mdash; not a decimal. <code>324.12Mre</code> is 324 whole Mereta plus 12&frasl;24 of a 325th. A bare whole number like <code>324Mre</code> means exactly that, no remainder. When one level of 1&frasl;24 isn't precise enough, the notation extends with further <code>.segments</code>, each one 24ths of what's left over &mdash; the same way a clock reads <code>8:40</code> as the everyday form but can extend to <code>8:40.21.29</code> when finer precision is actually needed. So <code>1.23.12.5Mre</code> is 1 whole, plus 23&frasl;24, plus 12&frasl;24 of that 24th, plus 5&frasl;24 of <i>that</i>. By default, results below are rounded to a single everyday <code>whole.fraction</code> level &mdash; check <b>Show full precision</b> under either results panel to see the full nested chain instead. Separately, length also has a smaller <b>named</b> unit for everyday speech, the <b>Sadelle (Sdr)</b>: 24 Sadelle make one Delle, the same way 24 Delle make one Roçenna.
   </div>
 
   <div class="conv-grid">
@@ -177,6 +183,7 @@ footer{
 
       <div class="result-group">
         <div class="label">Cosmossi units</div>
+        <label class="precision-toggle"><input type="checkbox" id="lenPrecisionToggle"> Show full precision</label>
         <div class="result-table" id="lenFictionalResults"></div>
       </div>
       <div class="result-group">
@@ -202,6 +209,7 @@ footer{
 
       <div class="result-group">
         <div class="label">Cosmossi units</div>
+        <label class="precision-toggle"><input type="checkbox" id="wtPrecisionToggle"> Show full precision</label>
         <div class="result-table" id="wtFictionalResults"></div>
       </div>
       <div class="result-group">
@@ -279,12 +287,22 @@ function parseFictionalInput(str){
   }
   return neg ? -val : val;
 }
-function formatFictional(amount){
+function formatFictional(amount, precise){
   if(!Number.isFinite(amount)) return '\u2014';
   const sign = amount<0 ? '-' : '';
   amount = Math.abs(amount);
   let whole = Math.floor(amount + 1e-9);
   let frac = amount - whole;
+
+  if(!precise){
+    // Rounded, single-level whole.fraction \u2014 the everyday reading.
+    let seg = Math.round(frac * 24);
+    if(seg>=24){ whole += 1; seg = 0; }
+    const wholeStr = whole.toLocaleString('en-US');
+    return seg===0 ? `${sign}${wholeStr}` : `${sign}${wholeStr}.${seg}`;
+  }
+
+  // Full precision: extend with nested /24 segments only as far as needed.
   const segments = [];
   for(let i=0; i<MAX_FRACTION_DEPTH; i++){
     frac *= 24;
@@ -311,8 +329,9 @@ function convert(value, fromKey, toKey, table){
 }
 
 /* ================= BUILD A CONVERTER SECTION ================= */
-function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, realResultsId, ladderId, defaultUnit }){
+function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, realResultsId, ladderId, defaultUnit, precisionToggleId }){
   const unitSelect = document.getElementById(unitId);
+  const precisionToggle = document.getElementById(precisionToggleId);
   const groups = { fictional: document.createElement('optgroup'), real: document.createElement('optgroup') };
   groups.fictional.label = 'Cosmossi';
   groups.real.label = 'Real world';
@@ -331,6 +350,7 @@ function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, re
     const fromKey = unitSelect.value;
     const fromUnit = byKey(table, fromKey);
     const hint = document.getElementById(hintId);
+    const precise = precisionToggle.checked;
 
     let value;
     if(fromUnit.group === 'fictional'){
@@ -351,7 +371,7 @@ function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, re
 
     const fictionalRows = table.filter(u=>u.group==='fictional').map(u=>{
       const out = convert(value, fromKey, u.key, table);
-      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatFictional(out)}<span class="u-sym">${u.key}</span></span></div>`;
+      return `<div class="result-row${u.key===fromKey?' is-source':''}"><span class="u">${u.label}</span><span class="v">${formatFictional(out, precise)}<span class="u-sym">${u.key}</span></span></div>`;
     }).join('');
     const realRows = table.filter(u=>u.group==='real').map(u=>{
       const out = convert(value, fromKey, u.key, table);
@@ -362,6 +382,7 @@ function buildConverter({ table, valueId, unitId, hintId, fictionalResultsId, re
   }
 
   document.getElementById(valueId).addEventListener('input', render);
+  precisionToggle.addEventListener('change', render);
   unitSelect.addEventListener('change', ()=>{
     // reset placeholder-ish default when switching group, keep value as-is otherwise
     render();
@@ -381,13 +402,13 @@ buildConverter({
   table: LENGTH_UNITS,
   valueId: 'lenValue', unitId: 'lenUnit', hintId: 'lenHint',
   fictionalResultsId: 'lenFictionalResults', realResultsId: 'lenRealResults', ladderId: 'lenLadder',
-  defaultUnit: 'Dr'
+  defaultUnit: 'Dr', precisionToggleId: 'lenPrecisionToggle'
 });
 buildConverter({
   table: WEIGHT_UNITS,
   valueId: 'wtValue', unitId: 'wtUnit', hintId: 'wtHint',
   fictionalResultsId: 'wtFictionalResults', realResultsId: 'wtRealResults', ladderId: 'wtLadder',
-  defaultUnit: 'Rt'
+  defaultUnit: 'Rt', precisionToggleId: 'wtPrecisionToggle'
 });
 
 })();
