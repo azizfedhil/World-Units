@@ -170,6 +170,26 @@ nav.pagenav a.active{border-color:var(--brass); color:var(--brass-bright); backg
 .day-num{font-family:var(--font-mono); font-size:15px; color:var(--parchment);}
 .day-dots{display:flex; gap:3px; flex-wrap:wrap;}
 .day-dot{width:6px; height:6px; border-radius:50%;}
+.day-moons{display:flex; gap:3px; align-items:center;}
+.day-moon-icon{width:15px; height:15px; display:block;}
+.day-moon-icon.small{width:10px; height:10px;}
+.day-cell.conjunction{border-color:var(--garnet); box-shadow:0 0 0 1px var(--garnet), 0 0 10px rgba(168,59,75,0.35);}
+.day-cell.selected{outline:2px solid var(--verdigris); outline-offset:-2px;}
+
+/* ---------- moon visualizer ---------- */
+.moon-card{margin-top:20px;}
+.moon-disks{display:flex; gap:22px; align-items:flex-start; flex-wrap:wrap; margin-bottom:16px;}
+.moon-disk-block{display:flex; flex-direction:column; align-items:center; width:88px; flex-shrink:0;}
+.moon-disk-svg{width:64px; height:64px;}
+.moon-disk-label{font-family:var(--font-display); font-size:12.5px; color:var(--brass-bright); margin-top:6px; letter-spacing:0.03em;}
+.moon-disk-sub{font-family:var(--font-mono); font-size:10px; color:var(--parchment-dim); text-align:center; line-height:1.45; margin-top:3px;}
+.moon-stats{flex:1; min-width:230px; font-family:var(--font-mono); font-size:12px; color:var(--parchment); line-height:1.85; background:var(--void); border:1px solid var(--line); border-radius:6px; padding:10px 14px;}
+.moon-stats b{color:var(--brass-bright);}
+.sky-chart-svg{width:100%; height:auto; display:block; background:var(--void); border:1px solid var(--line); border-radius:8px;}
+.sky-chart-legend{display:flex; gap:16px; margin-top:8px; flex-wrap:wrap; font-family:var(--font-mono); font-size:11px; color:var(--parchment-dim);}
+.sky-chart-legend span{display:flex; align-items:center; gap:5px;}
+.legend-swatch{width:14px; height:3px; border-radius:2px; display:inline-block;}
+.moon-note{font-size:11.5px; color:var(--parchment-dim); margin:12px 0 0; line-height:1.55;}
 
 /* ---------- sidebar ---------- */
 .side-card{
@@ -312,6 +332,31 @@ footer a{color:var(--parchment-dim); text-decoration:underline;}
         <div class="weekday-row" id="weekdayRow"></div>
         <div class="day-grid" id="dayGrid"></div>
       </div>
+
+      <div class="cal-card moon-card" id="moonCard">
+        <div class="cal-header">
+          <div class="month-title">
+            <h2>Moon Sky</h2>
+            <span class="datecode" id="moonDateLabel">&mdash;</span>
+          </div>
+        </div>
+        <div class="moon-disks">
+          <div class="moon-disk-block">
+            <svg class="moon-disk-svg" viewBox="0 0 70 70" id="bigMoonDisk"></svg>
+            <div class="moon-disk-label">Big Moon</div>
+            <div class="moon-disk-sub" id="bigMoonSub"></div>
+          </div>
+          <div class="moon-disk-block">
+            <svg class="moon-disk-svg" viewBox="0 0 70 70" id="smallMoonDisk"></svg>
+            <div class="moon-disk-label">Small Moon</div>
+            <div class="moon-disk-sub" id="smallMoonSub"></div>
+          </div>
+          <div class="moon-stats" id="moonStats"></div>
+        </div>
+        <svg class="sky-chart-svg" viewBox="0 0 600 210" id="skyChart"></svg>
+        <div class="sky-chart-legend" id="skyChartLegend"></div>
+        <p class="moon-note">Sky positions are modeled for a Northern-Hemisphere observer at roughly 45&deg; latitude, using the planet's 25.12&deg; axial tilt. Big Moon and Small Moon share a co-orbital, horseshoe-type orbit &mdash; they orbit the planet at essentially the same distance and period, drifting from a wide separation to a close conjunction and back over a ~750-day encounter cycle. Click any day on the calendar to see the sky for that date.</p>
+      </div>
     </div>
 
     <div class="side-col">
@@ -398,7 +443,7 @@ footer a{color:var(--parchment-dim); text-decoration:underline;}
 "use strict";
 
 /* ================= DATA ================= */
-const MONTHS = [
+const BASE_MONTHS = [
   { name:"Çuanede", days:24 },
   { name:"Febreo", days:25 },
   { name:"Asurro", days:24 },
@@ -415,8 +460,25 @@ const MONTHS = [
   { name:"Novum", days:24 },
   { name:"Deccem", days:25 }
 ];
-const YEAR_LENGTH = MONTHS.reduce((a,m)=>a+m.days,0); // 365
+const MONTHS = BASE_MONTHS; // baseline (non-leap) month list, used where leap-awareness doesn't matter
+const BASE_YEAR_LENGTH = BASE_MONTHS.reduce((a,m)=>a+m.days,0); // 365
 const YEARS_PER_ERA = 1000;
+const LEAP_INTERVAL_YEARS = 6; // one leap day added to the last month every 6 years
+
+/* ---- leap-year helpers ----
+   Every 6th year (counted continuously across eras) gets one extra day
+   tacked onto the final month, Deccem. */
+function yearsElapsedTotal(era, yearInEra){ return (era - 1) * YEARS_PER_ERA + yearInEra; }
+function isLeapYear(yrsElapsed){ return yrsElapsed % LEAP_INTERVAL_YEARS === 0; }
+function yearLength(yrsElapsed){ return BASE_YEAR_LENGTH + (isLeapYear(yrsElapsed) ? 1 : 0); }
+function monthsForYear(yrsElapsed){
+  if(!isLeapYear(yrsElapsed)) return BASE_MONTHS;
+  return BASE_MONTHS.map((m,i)=> i===BASE_MONTHS.length-1 ? { name:m.name, days:m.days+1 } : m);
+}
+// number of leap years among years [0, Y-1]
+function leapCountBefore(Y){ return Y > 0 ? Math.floor((Y-1)/LEAP_INTERVAL_YEARS) + 1 : 0; }
+// total days elapsed before year Y (0-indexed, continuous across eras)
+function cumulativeDaysBeforeYear(Y){ return BASE_YEAR_LENGTH * Y + leapCountBefore(Y); }
 
 const WEEKDAYS = [
   { name:"Caçe", icon:"\u263D" },   // moon day
@@ -452,23 +514,28 @@ const ANCHOR_YEAR = 300, ANCHOR_ERA = 5, ANCHOR_MONTH_IDX = 0, ANCHOR_DAY = 1;
 
 /* ================= CALENDAR MATH ================= */
 function fictionalAbsoluteDay(yearInEra, era, monthIdx, day){
-  // yearInEra runs 0-999, so it doubles as "years fully elapsed within this era"
-  const yearsFullyElapsed = (era - 1) * YEARS_PER_ERA + yearInEra;
+  const Y = yearsElapsedTotal(era, yearInEra);
+  const daysBeforeYear = cumulativeDaysBeforeYear(Y);
+  const months = monthsForYear(Y);
   let daysBeforeMonth = 0;
-  for (let i=0;i<monthIdx;i++) daysBeforeMonth += MONTHS[i].days;
-  return yearsFullyElapsed * YEAR_LENGTH + daysBeforeMonth + day;
+  for (let i=0;i<monthIdx;i++) daysBeforeMonth += months[i].days;
+  return daysBeforeYear + daysBeforeMonth + day;
 }
 function absoluteDayToFictional(absDay){
-  const yearsElapsed = Math.floor((absDay - 1) / YEAR_LENGTH); // 0-indexed years since era 1, year 0
-  const dayOfYear = absDay - yearsElapsed * YEAR_LENGTH;
-  const era = Math.floor(yearsElapsed / YEARS_PER_ERA) + 1;
-  const yearInEra = yearsElapsed - (era - 1) * YEARS_PER_ERA; // 0-999
+  // estimate the elapsed-year count, then correct against the exact cumulative-day function
+  let Y = Math.max(0, Math.floor((absDay - 1) / (BASE_YEAR_LENGTH + 1/LEAP_INTERVAL_YEARS)) - 1);
+  while (cumulativeDaysBeforeYear(Y + 1) < absDay) Y++;
+  while (Y > 0 && cumulativeDaysBeforeYear(Y) >= absDay) Y--;
+  const dayOfYear = absDay - cumulativeDaysBeforeYear(Y);
+  const era = Math.floor(Y / YEARS_PER_ERA) + 1;
+  const yearInEra = Y - (era - 1) * YEARS_PER_ERA; // 0-999
+  const months = monthsForYear(Y);
   let remaining = dayOfYear, monthIdx = 0;
-  for (; monthIdx < MONTHS.length; monthIdx++){
-    if (remaining <= MONTHS[monthIdx].days) break;
-    remaining -= MONTHS[monthIdx].days;
+  for (; monthIdx < months.length; monthIdx++){
+    if (remaining <= months[monthIdx].days) break;
+    remaining -= months[monthIdx].days;
   }
-  return { yearInEra, era, monthIdx, day:remaining };
+  return { yearInEra, era, monthIdx, day:remaining, yearsElapsed:Y, yearLength:yearLength(Y), dayOfYear };
 }
 function weekdayIndexOf(absDay){
   return ((absDay - 1) % 6 + 6) % 6;
@@ -500,11 +567,140 @@ function fullFictionalDate(yearInEra, era, monthIdx, day){
   return `${weekdayName}, the ${ordinal(day)} of ${MONTHS[monthIdx].name}, ${String(yearInEra).padStart(3,'0')}-${era}`;
 }
 
+/* ================= MOONS: Big Moon & Small Moon (co-orbital horseshoe pair) =================
+   Model summary:
+   - Both moons share one mean orbital period around the planet (MOON_ORBIT_PERIOD).
+   - Their angular separation "breathes" between a close-conjunction minimum
+     (CLOSEST_SEP_DEG, ~90,900 km / ~15 degrees) and a wide, near-opposite
+     maximum (FARTHEST_SEP_DEG, ~180 degrees) over one HORSESHOE_PERIOD.
+   - Sky declination for the Sun and each moon is derived from the planet's
+     25.12-degree axial tilt, using each body's own orbital/ecliptic longitude.
+   - Rise/transit/set and altitude use the standard spherical-astronomy
+     formulas for an assumed Northern-Hemisphere observer at ~45 degrees.
+   Anchor: at 17 Avessu, 301-5 the two moons were at their closest approach
+   (horseshoe phase = 0). Everything below is calculated forward/backward
+   from that single anchor date. */
+
+const TILT_DEG = 25.12;
+const OBSERVER_LAT_DEG = 45; // assumed reference latitude, Northern Hemisphere
+const MOON_ORBIT_PERIOD = 23.8506;  // days, shared mean orbital period (MEAN_ORBIT_PERIOD_DAYS)
+const HORSESHOE_PERIOD = 750.0;     // days, full close-approach-to-close-approach cycle (ENCOUNTER_CYCLE_DAYS)
+const CLOSEST_SEP_DEG = 15.0;       // angular separation at closest approach (~90,900 km, MIN_ENCOUNTER_SEPARATION_DEG)
+const FARTHEST_SEP_DEG = 180;       // angular separation at the far side of the horseshoe cycle
+
+const MOON_EPOCH_ABS = fictionalAbsoluteDay(301, 5, 9, 17); // 17 Avessu, 301-5 = closest approach
+
+function normalize360(deg){ let d = deg % 360; if(d < 0) d += 360; return d; }
+function normalizeSigned180(deg){ let d = normalize360(deg); if(d > 180) d -= 360; return d; }
+function normalize24(h){ let x = h % 24; if(x < 0) x += 24; return x; }
+
+function moonMeanLongitude(absDay){
+  return normalize360(360 * ((absDay - MOON_EPOCH_ABS) / MOON_ORBIT_PERIOD));
+}
+function horseshoePhaseDeg(absDay){
+  return normalize360(360 * ((absDay - MOON_EPOCH_ABS) / HORSESHOE_PERIOD));
+}
+function moonSeparationDeg(absDay){
+  const phi = horseshoePhaseDeg(absDay) * Math.PI / 180;
+  return CLOSEST_SEP_DEG + (FARTHEST_SEP_DEG - CLOSEST_SEP_DEG) * (1 - Math.cos(phi)) / 2;
+}
+function bigMoonLongitude(absDay){
+  return normalize360(moonMeanLongitude(absDay) + moonSeparationDeg(absDay) / 2);
+}
+function smallMoonLongitude(absDay){
+  return normalize360(moonMeanLongitude(absDay) - moonSeparationDeg(absDay) / 2);
+}
+function sunLongitude(fic){
+  return normalize360(360 * (fic.dayOfYear - 1) / fic.yearLength);
+}
+function daysFromClosestApproach(absDay){
+  const cyclePos = ((absDay - MOON_EPOCH_ABS) % HORSESHOE_PERIOD + HORSESHOE_PERIOD) % HORSESHOE_PERIOD;
+  return Math.min(cyclePos, HORSESHOE_PERIOD - cyclePos);
+}
+
+function hourAngleAtHorizon(declDeg, latDeg){
+  const lat = latDeg * Math.PI / 180, decl = declDeg * Math.PI / 180;
+  const cosH0 = -Math.tan(lat) * Math.tan(decl);
+  if (cosH0 <= -1) return { type:'circumpolar' };
+  if (cosH0 >= 1) return { type:'never-rises' };
+  return { type:'normal', H0deg: Math.acos(cosH0) * 180 / Math.PI };
+}
+function riseSetTransit(transitHour, h0info){
+  if (h0info.type === 'circumpolar') return { always:true, transit:transitHour, rise:null, set:null };
+  if (h0info.type === 'never-rises') return { never:true, transit:transitHour, rise:null, set:null };
+  const halfLen = h0info.H0deg / 15;
+  return { transit:transitHour, rise: normalize24(transitHour - halfLen), set: normalize24(transitHour + halfLen) };
+}
+function altitudeAt(clockHour, transitHour, declDeg, latDeg){
+  const H = (clockHour - transitHour) * 15 * Math.PI / 180;
+  const lat = latDeg * Math.PI / 180, decl = declDeg * Math.PI / 180;
+  const sinAlt = Math.sin(lat) * Math.sin(decl) + Math.cos(lat) * Math.cos(decl) * Math.cos(H);
+  return Math.asin(Math.max(-1, Math.min(1, sinAlt))) * 180 / Math.PI;
+}
+function phaseName(elong360){
+  const e = elong360;
+  if (e < 22.5 || e >= 337.5) return 'New';
+  if (e < 67.5) return 'Waxing Crescent';
+  if (e < 112.5) return 'First Quarter';
+  if (e < 157.5) return 'Waxing Gibbous';
+  if (e < 202.5) return 'Full';
+  if (e < 247.5) return 'Waning Gibbous';
+  if (e < 292.5) return 'Last Quarter';
+  return 'Waning Crescent';
+}
+function fmtHour(h){
+  if (h === null || h === undefined || isNaN(h)) return '&mdash;';
+  let hh = Math.floor(h), mm = Math.round((h - hh) * 60);
+  if (mm === 60){ mm = 0; hh = (hh + 1) % 24; }
+  return `${pad2(hh)}:${pad2(mm)}`;
+}
+function describeRiseSet(rs, name){
+  if (rs.always) return `${name} &mdash; circumpolar, up all day (crosses the meridian ${fmtHour(rs.transit)})`;
+  if (rs.never) return `${name} &mdash; stays below the horizon today`;
+  return `${name} &mdash; rise ${fmtHour(rs.rise)}, transit ${fmtHour(rs.transit)}, set ${fmtHour(rs.set)}`;
+}
+
+/* SVG for a moon phase disk: a dark base circle with a lit lune/gibbous/crescent
+   shape drawn on top, using the classic half-circle + terminator-ellipse path. */
+function moonDiscMarkup(r, elongDeg, litColor, darkColor){
+  const cx = r, cy = r;
+  const e = normalize360(elongDeg);
+  const waxing = e < 180;
+  const theta = e * Math.PI / 180;
+  const rx = Math.max(0.001, r * Math.abs(Math.cos(theta)));
+  const outerSweep = waxing ? 1 : 0;
+  const gibbous = Math.cos(theta) < 0;
+  const innerSweep = waxing ? (gibbous ? 1 : 0) : (gibbous ? 0 : 1);
+  const top = `${cx},${(cy - r).toFixed(2)}`, bottom = `${cx},${(cy + r).toFixed(2)}`;
+  const path = `M ${top} A ${r} ${r} 0 0 ${outerSweep} ${bottom} A ${rx.toFixed(2)} ${r} 0 0 ${innerSweep} ${top} Z`;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${darkColor}"></circle>` +
+         `<path d="${path}" fill="${litColor}"></path>` +
+         `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${darkColor}" stroke-width="0.75" opacity="0.5"></circle>`;
+}
+
+/* Small pair of moon-phase icons for a calendar day cell */
+function dayMoonIconsHTML(absDay){
+  const fic = absoluteDayToFictional(absDay);
+  const sun = sunLongitude(fic);
+  const big = bigMoonLongitude(absDay), small = smallMoonLongitude(absDay);
+  const elongBig = normalize360(big - sun), elongSmall = normalize360(small - sun);
+  const bigSvg = `<svg class="day-moon-icon" viewBox="0 0 20 20">${moonDiscMarkup(10, elongBig, '#e4c384', '#0d0f1c')}</svg>`;
+  const smallSvg = `<svg class="day-moon-icon small" viewBox="0 0 20 20">${moonDiscMarkup(10, elongSmall, '#8fc4b8', '#0d0f1c')}</svg>`;
+  return bigSvg + smallSvg;
+}
+
 /* ================= STATE ================= */
 const todayFictional = realToFictional(Date.now());
 let view = loadView() || { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx };
 let selectedColor = COLORS[0].key;
 let modalDayKey = null;
+// the day currently shown in the Moon Sky visualizer (independent of which month is displayed)
+let selected = { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx, day: todayFictional.day };
+function selectDay(era, yearInEra, monthIdx, day){
+  selected = { era, yearInEra, monthIdx, day };
+  renderCalendar();
+  renderMoonPanel();
+}
 
 function loadView(){
   try{
@@ -541,14 +737,16 @@ document.getElementById('todayBoxDate').textContent =
 function renderOrbit(){
   const svg = document.getElementById('orbitSvg');
   const cx=130, cy=130, r=95;
+  const yrsElapsed = yearsElapsedTotal(view.era, view.yearInEra);
+  const months = monthsForYear(yrsElapsed);
   let html = `<circle class="orbit-ring" cx="${cx}" cy="${cy}" r="${r}"></circle>`;
-  const monthHasEvents = MONTHS.map((m,i)=>{
+  const monthHasEvents = months.map((m,i)=>{
     for(let d=1; d<=m.days; d++){
       if(EVENTS[dayKey(view.era, view.yearInEra, i, d)]?.length) return true;
     }
     return false;
   });
-  MONTHS.forEach((m,i)=>{
+  months.forEach((m,i)=>{
     const angle = (-90 + i * (360/15)) * Math.PI/180;
     const x = cx + r*Math.cos(angle);
     const y = cy + r*Math.sin(angle);
@@ -558,8 +756,8 @@ function renderOrbit(){
     html += `<line class="orbit-tick" x1="${cx+(r-6)*Math.cos(angle)}" y1="${cy+(r-6)*Math.sin(angle)}" x2="${cx+(r+6)*Math.cos(angle)}" y2="${cy+(r+6)*Math.sin(angle)}"></line>`;
     html += `<circle class="orbit-dot${active?' active':''}${monthHasEvents[i]?' has-events':''}" data-month="${i}" cx="${x}" cy="${y}" r="5"><title>${m.name} &mdash; ${m.days} days</title></circle>`;
   });
-  html += `<text class="orbit-center-label" x="${cx}" y="${cy-4}">${MONTHS[view.monthIdx].name}</text>`;
-  html += `<text class="orbit-center-sub" x="${cx}" y="${cy+14}">${MONTHS[view.monthIdx].days} DAYS &middot; ERA ${view.era}</text>`;
+  html += `<text class="orbit-center-label" x="${cx}" y="${cy-4}">${months[view.monthIdx].name}</text>`;
+  html += `<text class="orbit-center-sub" x="${cx}" y="${cy+14}">${months[view.monthIdx].days} DAYS &middot; ERA ${view.era}${isLeapYear(yrsElapsed)?' &middot; LEAP YEAR':''}</text>`;
   svg.innerHTML = html;
   svg.querySelectorAll('.orbit-dot').forEach(dot=>{
     dot.addEventListener('click', ()=>{
@@ -579,9 +777,11 @@ function renderEraControls(){
 
 /* ================= RENDER: calendar grid ================= */
 function renderCalendar(){
-  const month = MONTHS[view.monthIdx];
+  const yrsElapsed = yearsElapsedTotal(view.era, view.yearInEra);
+  const months = monthsForYear(yrsElapsed);
+  const month = months[view.monthIdx];
   document.getElementById('monthName').textContent = month.name;
-  document.getElementById('monthDatecode').textContent = `Year ${view.yearInEra}, Era ${view.era} \u00b7 ${month.days} days`;
+  document.getElementById('monthDatecode').textContent = `Year ${view.yearInEra}, Era ${view.era} \u00b7 ${month.days} days${isLeapYear(yrsElapsed)?' \u00b7 leap year':''}`;
 
   const weekdayRow = document.getElementById('weekdayRow');
   weekdayRow.innerHTML = WEEKDAYS.map(w=>`<div>${w.icon?w.icon+' ':''}${w.name}</div>`).join('');
@@ -595,20 +795,30 @@ function renderCalendar(){
   for(let d=1; d<=month.days; d++){
     const key = dayKey(view.era, view.yearInEra, view.monthIdx, d);
     const dayEvents = EVENTS[key] || [];
+    const absDay = fictionalAbsoluteDay(view.yearInEra, view.era, view.monthIdx, d);
     const isToday = (view.era===todayFictional.era && view.yearInEra===todayFictional.yearInEra &&
                       view.monthIdx===todayFictional.monthIdx && d===todayFictional.day);
+    const isSelected = (view.era===selected.era && view.yearInEra===selected.yearInEra &&
+                      view.monthIdx===selected.monthIdx && d===selected.day);
+    const isConjunction = daysFromClosestApproach(absDay) < 1;
     const dots = dayEvents.slice(0,6).map(ev=>{
       const c = COLORS.find(c=>c.key===ev.color) || COLORS[0];
       return `<span class="day-dot" style="background:${c.hex}"></span>`;
     }).join('');
-    html += `<div class="day-cell${isToday?' today':''}" data-day="${d}">
+    const cls = ['day-cell', isToday?'today':'', isSelected?'selected':'', isConjunction?'conjunction':''].filter(Boolean).join(' ');
+    html += `<div class="${cls}" data-day="${d}" title="${isConjunction?'Closest approach of the moons this cycle':''}">
       <span class="day-num">${d}</span>
+      <span class="day-moons">${dayMoonIconsHTML(absDay)}</span>
       <span class="day-dots">${dots}</span>
     </div>`;
   }
   grid.innerHTML = html;
   grid.querySelectorAll('.day-cell:not(.empty)').forEach(cell=>{
-    cell.addEventListener('click', ()=> openModal(parseInt(cell.getAttribute('data-day'),10)));
+    cell.addEventListener('click', ()=>{
+      const d = parseInt(cell.getAttribute('data-day'),10);
+      selectDay(view.era, view.yearInEra, view.monthIdx, d);
+      openModal(d);
+    });
   });
 }
 
@@ -616,7 +826,7 @@ function renderCalendar(){
 function renderEventsSidebar(){
   document.getElementById('eventsMonthLabel').textContent = MONTHS[view.monthIdx].name + ' ' + view.yearInEra;
   const list = document.getElementById('eventsList');
-  const month = MONTHS[view.monthIdx];
+  const month = monthsForYear(yearsElapsedTotal(view.era, view.yearInEra))[view.monthIdx];
   let items = [];
   for(let d=1; d<=month.days; d++){
     const key = dayKey(view.era, view.yearInEra, view.monthIdx, d);
@@ -735,6 +945,7 @@ document.getElementById('yearInput').addEventListener('change', e=>{
 });
 document.getElementById('todayBtn').addEventListener('click', ()=>{
   view = { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx };
+  selected = { era: todayFictional.era, yearInEra: todayFictional.yearInEra, monthIdx: todayFictional.monthIdx, day: todayFictional.day };
   saveView(); renderAll();
 });
 
@@ -757,9 +968,9 @@ document.getElementById('convertToRealBtn').addEventListener('click', ()=>{
   const y = parseInt(document.getElementById('fYear').value,10);
   const era = parseInt(document.getElementById('fEra').value,10);
   const out = document.getElementById('toRealResult');
-  const maxDays = MONTHS[mIdx].days;
-  if(!d || d<1 || d>maxDays){ out.textContent = `${MONTHS[mIdx].name} only has ${maxDays} days.`; return; }
   if(isNaN(y) || y<0 || y>999 || !era || era<1){ out.textContent = 'Enter a valid year (0-999) and era.'; return; }
+  const maxDays = monthsForYear(yearsElapsedTotal(era, y))[mIdx].days;
+  if(!d || d<1 || d>maxDays){ out.textContent = `${MONTHS[mIdx].name} only has ${maxDays} days${mIdx===MONTHS.length-1?' in a non-leap year (add 1 every 6th year)':''}.`; return; }
   const real = fictionalToReal(y, era, mIdx, d);
   out.textContent = formatRealDate(real);
 });
@@ -792,6 +1003,108 @@ document.getElementById('importInput').addEventListener('change', e=>{
   e.target.value = '';
 });
 
+/* ================= RENDER: moon visualizer ================= */
+function renderMoonPanel(){
+  const { era, yearInEra, monthIdx, day } = selected;
+  const absDay = fictionalAbsoluteDay(yearInEra, era, monthIdx, day);
+  const fic = absoluteDayToFictional(absDay);
+
+  const lambdaSun = sunLongitude(fic);
+  const lambdaBig = bigMoonLongitude(absDay);
+  const lambdaSmall = smallMoonLongitude(absDay);
+  const sep = moonSeparationDeg(absDay);
+
+  const declSun = TILT_DEG * Math.sin(lambdaSun * Math.PI/180);
+  const declBig = TILT_DEG * Math.sin(lambdaBig * Math.PI/180);
+  const declSmall = TILT_DEG * Math.sin(lambdaSmall * Math.PI/180);
+
+  const elongBig = normalizeSigned180(lambdaBig - lambdaSun);
+  const elongSmall = normalizeSigned180(lambdaSmall - lambdaSun);
+  const elongBig360 = normalize360(elongBig), elongSmall360 = normalize360(elongSmall);
+  const illumBig = (1 - Math.cos(elongBig * Math.PI/180)) / 2;
+  const illumSmall = (1 - Math.cos(elongSmall * Math.PI/180)) / 2;
+
+  const transitSun = 12;
+  const transitBig = normalize24(12 + elongBig / 15);
+  const transitSmall = normalize24(12 + elongSmall / 15);
+
+  const h0Sun = hourAngleAtHorizon(declSun, OBSERVER_LAT_DEG);
+  const h0Big = hourAngleAtHorizon(declBig, OBSERVER_LAT_DEG);
+  const h0Small = hourAngleAtHorizon(declSmall, OBSERVER_LAT_DEG);
+
+  const rsSun = riseSetTransit(transitSun, h0Sun);
+  const rsBig = riseSetTransit(transitBig, h0Big);
+  const rsSmall = riseSetTransit(transitSmall, h0Small);
+
+  document.getElementById('moonDateLabel').textContent =
+    fictionalDateCode(yearInEra, era, monthIdx, day) + '  \u2192  ' + fullFictionalDate(yearInEra, era, monthIdx, day);
+
+  document.getElementById('bigMoonDisk').innerHTML = moonDiscMarkup(35, elongBig360, '#e4c384', '#0d0f1c');
+  document.getElementById('smallMoonDisk').innerHTML = moonDiscMarkup(35, elongSmall360, '#8fc4b8', '#0d0f1c');
+  document.getElementById('bigMoonSub').innerHTML = `${phaseName(elongBig360)}<br>${Math.round(illumBig*100)}% lit`;
+  document.getElementById('smallMoonSub').innerHTML = `${phaseName(elongSmall360)}<br>${Math.round(illumSmall*100)}% lit`;
+
+  const dFromClosest = daysFromClosestApproach(absDay);
+  const cyclePos = ((absDay - MOON_EPOCH_ABS) % HORSESHOE_PERIOD + HORSESHOE_PERIOD) % HORSESHOE_PERIOD;
+  const approaching = cyclePos > HORSESHOE_PERIOD/2;
+  let horseshoeLine;
+  if (dFromClosest < 1){
+    horseshoeLine = `<b>At closest approach</b> for this horseshoe cycle &mdash; the two moons are near conjunction.`;
+  } else {
+    horseshoeLine = `${approaching ? 'Converging toward' : 'Diverging from'} their next closest approach &mdash; about <b>${Math.round(dFromClosest)}</b> days away.`;
+  }
+
+  document.getElementById('moonStats').innerHTML = `
+    <div><b>Sky separation today:</b> ${sep.toFixed(1)}&deg;</div>
+    <div>${horseshoeLine}</div>
+    <div style="margin-top:8px;">${describeRiseSet(rsBig, 'Big Moon')}</div>
+    <div>${describeRiseSet(rsSmall, 'Small Moon')}</div>
+    <div>${describeRiseSet(rsSun, 'Sun')}</div>
+  `;
+
+  renderSkyChart(
+    { decl: declSun, transit: transitSun, color: '#c9a15c', dash: '3 2', label: 'Sun' },
+    { decl: declBig, transit: transitBig, color: '#e4c384', dash: null, label: 'Big Moon' },
+    { decl: declSmall, transit: transitSmall, color: '#8fc4b8', dash: null, label: 'Small Moon' }
+  );
+}
+
+function renderSkyChart(sun, big, small){
+  const w=600, h=210, padL=34, padR=12, padT=12, padB=24;
+  const plotW = w-padL-padR, plotH = h-padT-padB;
+  const altMin=-30, altMax=90;
+  const xForHour = hh => padL + (hh/24)*plotW;
+  const yForAlt = alt => padT + (1 - (alt-altMin)/(altMax-altMin))*plotH;
+
+  function pathFor(body){
+    let d = '';
+    for(let i=0;i<=48;i++){
+      const hh = i*0.5;
+      const alt = altitudeAt(hh, body.transit, body.decl, OBSERVER_LAT_DEG);
+      const x = xForHour(hh), y = yForAlt(Math.max(altMin, Math.min(altMax, alt)));
+      d += (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+    }
+    return `<path d="${d}" fill="none" stroke="${body.color}" stroke-width="2" ${body.dash?`stroke-dasharray="${body.dash}"`:''} opacity="0.9"></path>`;
+  }
+
+  let html = '';
+  html += `<line x1="${padL}" y1="${yForAlt(0)}" x2="${w-padR}" y2="${yForAlt(0)}" stroke="#c9a15c" stroke-width="1" stroke-dasharray="4 3" opacity="0.5"></line>`;
+  html += `<text x="${padL-6}" y="${yForAlt(0)+3}" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="9" fill="#a8a398">0&#176;</text>`;
+  [0,6,12,18,24].forEach(hh=>{
+    const x = xForHour(hh);
+    html += `<line x1="${x}" y1="${padT}" x2="${x}" y2="${h-padB}" stroke="#2a3050" stroke-width="1"></line>`;
+    html += `<text x="${x}" y="${h-8}" text-anchor="middle" font-family="IBM Plex Mono, monospace" font-size="9" fill="#a8a398">${pad2(hh%24)}:00</text>`;
+  });
+  html += pathFor(sun);
+  html += pathFor(big);
+  html += pathFor(small);
+
+  document.getElementById('skyChart').innerHTML = html;
+  document.getElementById('skyChartLegend').innerHTML = [sun,big,small].map(b=>
+    `<span><span class="legend-swatch" style="background:${b.color}"></span>${b.label}</span>`
+  ).join('');
+}
+
 /* ================= INIT ================= */
 function renderAll(){
   renderOrbit();
@@ -799,6 +1112,7 @@ function renderAll(){
   renderCalendar();
   renderEventsSidebar();
   renderColorPicks();
+  renderMoonPanel();
 }
 renderAll();
 
