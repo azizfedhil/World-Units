@@ -3,129 +3,180 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cosmossi &mdash; 3D Sky Observatory</title>
+<title>Cosmossi &mdash; Coastal Highway Observatory</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --void:#090b14;
-  --panel: rgba(23, 27, 46, 0.88);
-  --panel-light: rgba(32, 37, 66, 0.75);
+  --void:#050716;
+  --panel: rgba(11, 15, 36, 0.92);
+  --panel-light: rgba(22, 28, 64, 0.85);
   --brass:#c9a15c;
   --brass-bright:#e4c384;
   --verdigris:#5fa89a;
   --verdigris-bright:#8fe0d0;
   --garnet:#a83b4b;
   --parchment:#ede7d8;
-  --parchment-dim:#a8a398;
-  --line: rgba(201,161,92,0.25);
-  --line-bright: rgba(201,161,92,0.5);
-  --shadow: 0 16px 36px rgba(0,0,0,0.6);
+  --parchment-dim:#a2a8c8;
+  --line: rgba(138, 157, 240, 0.22);
+  --line-bright: rgba(138, 157, 240, 0.5);
+  --shadow: 0 18px 46px rgba(2, 4, 15, 0.85);
   --radius: 10px;
   --font-display:'Cinzel', serif;
   --font-body:'Inter', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
 }
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#05070d;color:var(--parchment);font-family:var(--font-body);user-select:none;}
+*,*::before,*::after{box-sizing:border-box;}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#030511;color:var(--parchment);font-family:var(--font-body);user-select:none;}
 
-#webgl-canvas{width:100%;height:100%;display:block;}
+#webgl-canvas{width:100%;height:100%;display:block;cursor:crosshair;}
 
-/* Header Navigation */
+/* Crosshair for First-Person View */
+.crosshair{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:14px;height:14px;pointer-events:none;z-index:30;display:none;
+}
+.crosshair::before, .crosshair::after{
+  content:'';position:absolute;background:rgba(180, 195, 255, 0.75);box-shadow:0 0 4px rgba(0,0,0,0.8);
+}
+.crosshair::before{top:6px;left:0;width:14px;height:2px;}
+.crosshair::after{top:0;left:6px;width:2px;height:14px;}
+.crosshair.active{display:block;}
+
+/* First-Person Prompt Banner */
+.fpv-banner{
+  position:fixed;top:18px;left:50%;transform:translateX(-50%);
+  background:rgba(9, 13, 34, 0.88);backdrop-filter:blur(10px);
+  border:1px solid var(--line-bright);border-radius:24px;
+  padding:8px 22px;font-family:var(--font-mono);font-size:11.5px;
+  color:var(--parchment);letter-spacing:0.04em;z-index:25;pointer-events:none;
+  display:flex;align-items:center;gap:12px;box-shadow:var(--shadow);
+  transition:opacity 0.3s ease, transform 0.3s ease;
+}
+.fpv-banner kbd{
+  background:rgba(138, 157, 240, 0.2);border:1px solid var(--line);
+  color:var(--parchment);padding:1px 6px;border-radius:4px;font-size:10px;
+}
+.fpv-banner.hidden{opacity:0;transform:translate(-50%, -20px);pointer-events:none;}
+
+/* Top Header */
 .header-overlay{
-  position:absolute;top:16px;left:20px;right:20px;
-  display:flex;justify-content:space-between;align-items:center;
+  position:absolute;top:16px;left:20px;display:flex;align-items:center;gap:18px;
   pointer-events:none;z-index:20;
 }
 .brand{pointer-events:auto;}
 .brand h1{
-  font-family:var(--font-display);font-size:22px;margin:0;
-  color:var(--parchment);letter-spacing:0.04em;text-shadow:0 2px 10px rgba(0,0,0,0.8);
+  font-family:var(--font-display);font-size:20px;margin:0;
+  color:var(--parchment);letter-spacing:0.04em;text-shadow:0 2px 12px rgba(0,0,0,0.9);
 }
 .brand h1 span{color:var(--brass-bright);}
 .brand .sub{
-  font-family:var(--font-mono);font-size:11px;color:var(--parchment-dim);
-  text-transform:uppercase;letter-spacing:0.07em;margin-top:2px;
+  font-family:var(--font-mono);font-size:10px;color:var(--parchment-dim);
+  text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;
 }
-nav.pagenav{display:flex;gap:6px;pointer-events:auto;}
+nav.pagenav{position:absolute;top:16px;right:20px;display:flex;gap:6px;pointer-events:auto;z-index:20;}
 nav.pagenav a{
   font-family:var(--font-mono);font-size:11px;letter-spacing:0.05em;text-transform:uppercase;
   text-decoration:none;color:var(--parchment-dim);padding:6px 14px;
-  background:rgba(13,15,28,0.7);backdrop-filter:blur(8px);border:1px solid var(--line);
+  background:rgba(9, 13, 34, 0.85);backdrop-filter:blur(8px);border:1px solid var(--line);
   border-radius:6px;transition:all 0.15s ease;
 }
 nav.pagenav a:hover{border-color:var(--brass);color:var(--brass-bright);}
-nav.pagenav a.active{border-color:var(--brass);color:var(--brass-bright);background:rgba(32,37,66,0.85);}
+nav.pagenav a.active{border-color:var(--brass-bright);color:var(--brass-bright);background:var(--panel-light);}
 
-/* Main Floating Controls */
+/* Floating Controls Card */
 .controls-card{
-  position:absolute;bottom:24px;left:20px;width:370px;
+  position:absolute;bottom:20px;left:20px;width:350px;max-width:calc(100vw - 40px);
   background:var(--panel);backdrop-filter:blur(14px);
   border:1px solid var(--line-bright);border-radius:var(--radius);
-  padding:16px 18px;box-shadow:var(--shadow);z-index:20;
-  transition:transform 0.3s ease, opacity 0.3s ease;
+  padding:15px;box-shadow:var(--shadow);z-index:20;
+  max-height:86vh;overflow-y:auto;overflow-x:hidden;
+  transition:transform 0.3s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+.controls-card.minimized{
+  transform:translateY(calc(100% - 46px));
 }
 .card-header{
   display:flex;justify-content:space-between;align-items:center;
   margin-bottom:12px;border-bottom:1px solid var(--line);padding-bottom:8px;
+  cursor:pointer;
 }
 .card-header h2{
-  font-family:var(--font-display);font-size:15px;margin:0;
+  font-family:var(--font-display);font-size:14.5px;margin:0;
   color:var(--brass-bright);font-weight:600;letter-spacing:0.03em;
 }
-.date-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:10px;}
-.date-input-block{display:flex;flex-direction:column;gap:3px;}
-.date-input-block label{
+.card-header .toggle-icon{
+  font-family:var(--font-mono);font-size:11px;color:var(--parchment-dim);
+  border:1px solid var(--line);padding:2px 6px;border-radius:4px;
+}
+
+/* Form Layout */
+.form-grid{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.field-box{display:flex;flex-direction:column;gap:3px;min-width:0;}
+.field-box label{
   font-family:var(--font-mono);font-size:9.5px;color:var(--parchment-dim);
   text-transform:uppercase;letter-spacing:0.06em;
 }
-.field{
-  background:rgba(9,11,20,0.85);border:1px solid var(--line);color:var(--parchment);
-  border-radius:5px;padding:6px 8px;font-family:var(--font-mono);font-size:12.5px;outline:none;
+.field-input, .field-select{
+  width:100%;background:rgba(5, 7, 20, 0.92);border:1px solid var(--line);color:var(--parchment);
+  border-radius:5px;padding:6px 8px;font-family:var(--font-mono);font-size:12px;outline:none;
 }
-.field:focus{border-color:var(--brass);}
-select.field{font-size:11.5px;padding:6px 4px;}
+.field-input:focus, .field-select:focus{border-color:var(--brass-bright);}
+.field-select{text-overflow:ellipsis;white-space:nowrap;overflow:hidden;cursor:pointer;}
 
-/* Time Slider Row */
-.time-row{margin:10px 0 12px;background:rgba(9,11,20,0.5);border:1px solid var(--line);border-radius:6px;padding:8px 10px;}
-.time-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;}
-.time-label{font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;color:var(--parchment-dim);}
-.time-val{font-family:var(--font-mono);font-size:14px;color:var(--brass-bright);font-weight:600;}
+/* Sliders */
+.slider-group{
+  background:rgba(5, 7, 20, 0.65);border:1px solid var(--line);
+  border-radius:6px;padding:7px 10px;margin-bottom:8px;
+}
+.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.slider-label{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;color:var(--parchment-dim);}
+.slider-val{font-family:var(--font-mono);font-size:12.5px;color:var(--brass-bright);font-weight:600;}
 .slider{
-  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;
-  background:rgba(201,161,92,0.2);outline:none;cursor:pointer;
+  -webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+  background:rgba(138, 157, 240, 0.25);outline:none;cursor:pointer;margin:4px 0 2px;
 }
 .slider::-webkit-slider-thumb{
-  -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
   background:var(--brass-bright);cursor:pointer;box-shadow:0 0 8px rgba(228,195,132,0.8);
 }
 
-.btn-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;}
+.preset-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px;}
+.preset-btn{
+  background:rgba(9, 13, 34, 0.8);border:1px solid var(--line);color:var(--parchment-dim);
+  border-radius:4px;padding:4px 6px;font-size:9.5px;font-family:var(--font-mono);
+  cursor:pointer;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.preset-btn:hover{border-color:var(--brass);color:var(--brass-bright);}
+.preset-btn.active{background:var(--panel-light);border-color:var(--brass-bright);color:var(--brass-bright);}
+
+.btn-row{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;}
 .btn{
   background:transparent;border:1px solid var(--line);color:var(--parchment-dim);
-  border-radius:5px;padding:5px 9px;font-size:11px;font-family:var(--font-mono);
-  cursor:pointer;letter-spacing:0.03em;transition:all 0.15s ease;
+  border-radius:5px;padding:6px 8px;font-size:11px;font-family:var(--font-mono);
+  cursor:pointer;letter-spacing:0.02em;text-align:center;transition:all 0.15s ease;
 }
-.btn:hover{border-color:var(--brass);color:var(--brass-bright);background:rgba(201,161,92,0.1);}
+.btn:hover{border-color:var(--brass);color:var(--brass-bright);background:rgba(201,161,92,0.12);}
 .btn.active{border-color:var(--brass-bright);color:var(--void);background:var(--brass-bright);font-weight:600;}
 
-/* Live Astral Telemetry Card */
+/* Live Astral Telemetry HUD */
 .telemetry-card{
-  position:absolute;top:80px;right:20px;width:300px;
+  position:absolute;bottom:20px;right:20px;width:280px;
   background:var(--panel);backdrop-filter:blur(14px);
   border:1px solid var(--line);border-radius:var(--radius);
-  padding:14px 16px;box-shadow:var(--shadow);z-index:20;
+  padding:12px 14px;box-shadow:var(--shadow);z-index:20;
 }
 .telem-title{
-  font-family:var(--font-display);font-size:13px;color:var(--brass-bright);
-  letter-spacing:0.04em;margin-bottom:8px;border-bottom:1px solid var(--line);padding-bottom:5px;
+  font-family:var(--font-display);font-size:12px;color:var(--brass-bright);
+  letter-spacing:0.04em;margin-bottom:6px;border-bottom:1px solid var(--line);padding-bottom:4px;
   display:flex;justify-content:space-between;align-items:center;
 }
 .telem-item{
   display:flex;justify-content:space-between;align-items:baseline;
-  font-family:var(--font-mono);font-size:11.5px;padding:3.5px 0;
-  border-bottom:1px solid rgba(201,161,92,0.08);
+  font-family:var(--font-mono);font-size:11px;padding:3px 0;
+  border-bottom:1px solid rgba(138, 157, 240, 0.08);
 }
 .telem-item:last-child{border-bottom:none;}
 .telem-k{color:var(--parchment-dim);}
@@ -134,117 +185,133 @@ select.field{font-size:11.5px;padding:6px 4px;}
 .telem-v.small{color:var(--verdigris-bright);}
 .telem-v.alert{color:var(--garnet);font-weight:600;}
 
-/* 3D Horizon Compass & Guide */
-.view-presets{
-  position:absolute;bottom:24px;right:20px;z-index:20;
-  display:flex;gap:6px;background:var(--panel);backdrop-filter:blur(14px);
-  padding:6px;border-radius:8px;border:1px solid var(--line);
-}
-.compass-hint{
-  position:absolute;bottom:70px;right:24px;z-index:10;
-  font-family:var(--font-mono);font-size:10px;color:rgba(168,163,152,0.7);
-  pointer-events:none;text-align:right;
-}
-
-/* 3D Label tags */
-.sky-tag{
-  position:absolute;transform:translate(-50%, -100%);pointer-events:none;
-  font-family:var(--font-mono);font-size:11px;padding:3px 7px;border-radius:4px;
-  white-space:nowrap;transition:opacity 0.2s ease;text-shadow:0 1px 4px black;
-}
-.sky-tag.big-moon{background:rgba(201,161,92,0.85);color:#0d0f1c;font-weight:600;box-shadow:0 0 12px rgba(228,195,132,0.6);}
-.sky-tag.small-moon{background:rgba(95,168,154,0.85);color:#0d0f1c;font-weight:600;box-shadow:0 0 12px rgba(95,168,154,0.6);}
-.sky-tag.sun{background:rgba(242,197,94,0.9);color:#0d0f1c;font-weight:600;}
-
 @media (max-width:850px){
-  .controls-card{left:10px;right:10px;bottom:10px;width:auto;}
   .telemetry-card{display:none;}
-  .view-presets{display:none;}
+  .fpv-banner{font-size:10px;padding:6px 14px;}
 }
 </style>
-<!-- Three.js + OrbitControls -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 </head>
 <body>
 
 <canvas id="webgl-canvas"></canvas>
+<div class="crosshair" id="crosshair"></div>
+
+<div class="fpv-banner" id="fpvBanner">
+  <span>Click highway to <b>look around</b></span>
+  <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span>
+  <span><kbd>ESC</kbd> unlock cursor</span>
+</div>
 
 <div class="header-overlay">
   <div class="brand">
-    <h1><span>Cosmossi</span> &mdash; Sky Observatory</h1>
-    <div class="sub">Co-Orbital Horseshoe Moons 3D Simulator</div>
+    <h1><span>Cosmossi</span> &mdash; Coastal Highway Observatory</h1>
+    <div class="sub">Clifftop Road &bull; Endless Pacific Sky</div>
   </div>
-  <nav class="pagenav">
-    <a href="index.html">Calendar</a>
-    <a href="units.html">Units</a>
-    <a href="sky3d.html" class="active">3D Sky</a>
-  </nav>
 </div>
 
+<nav class="pagenav">
+  <a href="index.html">Calendar</a>
+  <a href="units.html">Units</a>
+  <a href="sky3d.html" class="active">3D Sky</a>
+</nav>
+
 <!-- Controls Panel -->
-<div class="controls-card">
-  <div class="card-header">
+<div class="controls-card" id="controlsCard">
+  <div class="card-header" id="cardHeaderToggle">
     <h2 id="calendarDateDisplay">Avessu 17, 301-5</h2>
-    <span style="font-family:var(--font-mono);font-size:10px;color:var(--parchment-dim);" id="closestDaysBadge">CONJUNCTION</span>
+    <span class="toggle-icon" id="toggleIcon">&minus;</span>
   </div>
 
-  <div class="date-row">
-    <div class="date-input-block">
-      <label for="eraInput">Era</label>
-      <input type="number" id="eraInput" class="field" value="5" min="1">
+  <div class="form-grid">
+    <div class="form-row">
+      <div class="field-box">
+        <label for="eraInput">Era</label>
+        <input type="number" id="eraInput" class="field-input" value="5" min="1">
+      </div>
+      <div class="field-box">
+        <label for="yearInput">Year</label>
+        <input type="number" id="yearInput" class="field-input" value="301" min="0" max="999">
+      </div>
     </div>
-    <div class="date-input-block">
-      <label for="yearInput">Year</label>
-      <input type="number" id="yearInput" class="field" value="301" min="0" max="999">
-    </div>
-    <div class="date-input-block">
-      <label for="monthSelect">Month</label>
-      <select id="monthSelect" class="field"></select>
-    </div>
-    <div class="date-input-block">
-      <label for="dayInput">Day</label>
-      <input type="number" id="dayInput" class="field" value="17" min="1" max="25">
+
+    <div class="form-row">
+      <div class="field-box" style="grid-column: span 1;">
+        <label for="monthSelect">Month</label>
+        <select id="monthSelect" class="field-select"></select>
+      </div>
+      <div class="field-box" style="grid-column: span 1;">
+        <label for="dayInput">Day</label>
+        <input type="number" id="dayInput" class="field-input" value="17" min="1" max="25">
+      </div>
     </div>
   </div>
 
-  <div class="time-row">
-    <div class="time-header">
-      <span class="time-label">Observer Time of Day</span>
-      <span class="time-val" id="timeDisplay">21:00</span>
+  <!-- Time of Day Slider -->
+  <div class="slider-group">
+    <div class="slider-header">
+      <span class="slider-label">Local Time</span>
+      <span class="slider-val" id="timeDisplay">21:00</span>
     </div>
     <input type="range" id="timeSlider" class="slider" min="0" max="24" step="0.05" value="21">
   </div>
 
+  <!-- Standing Location on Globe (Latitude) -->
+  <div class="slider-group">
+    <div class="slider-header">
+      <span class="slider-label">Observer Latitude</span>
+      <span class="slider-val" id="latDisplay">36.3&deg; N</span>
+    </div>
+    <input type="range" id="latSlider" class="slider" min="-90" max="90" step="1" value="36">
+    <div class="preset-grid">
+      <button class="preset-btn active" data-lat="36">36&deg; N Coast</button>
+      <button class="preset-btn" data-lat="0">0&deg; Equator</button>
+      <button class="preset-btn" data-lat="-45">45&deg; S South</button>
+      <button class="preset-btn" data-lat="90">90&deg; N Pole</button>
+    </div>
+  </div>
+
+  <!-- Moon Scale -->
+  <div class="slider-group">
+    <div class="slider-header">
+      <span class="slider-label">Moon Scale</span>
+      <span class="slider-val" id="scaleDisplay">Realistic (0.8&deg;)</span>
+    </div>
+    <div class="preset-grid">
+      <button class="preset-btn active" id="scaleRealisticBtn">Realistic (1&times;)</button>
+      <button class="preset-btn" id="scaleCinematicBtn">Cinematic (2.4&times;)</button>
+    </div>
+  </div>
+
   <div class="btn-row">
     <button class="btn" id="playPauseBtn">&#9654; Play Time</button>
-    <button class="btn" id="closestBtn">&#9733; Closest Encounter</button>
+    <button class="btn" id="closestBtn">&#9733; Conjunction</button>
     <button class="btn" id="todayBtn">&#8635; Today</button>
-    <button class="btn" id="toggleGridBtn">Ecliptic Grid</button>
+    <button class="btn" id="lookCoastBtn">&#8767; View Highway</button>
   </div>
 </div>
 
 <!-- Astral Telemetry HUD -->
 <div class="telemetry-card">
   <div class="telem-title">
-    <span>Astral Positions</span>
-    <span id="sepDisplay" style="color:var(--brass-bright);font-size:12px;">Sep: 15.0&deg;</span>
+    <span>Astral Telemetry</span>
+    <span id="sepDisplay" style="color:var(--brass-bright);font-size:11px;">Sep: 15.0&deg;</span>
   </div>
   <div class="telem-item">
     <span class="telem-k">Big Moon Alt / Az</span>
     <span class="telem-v big" id="bigAltAz">&mdash;</span>
   </div>
   <div class="telem-item">
-    <span class="telem-k">Big Moon Phase</span>
-    <span class="telem-v" id="bigPhase">&mdash;</span>
+    <span class="telem-k">Big Moon Angular &Oslash;</span>
+    <span class="telem-v" id="bigAngSize">0.78&deg; (1.5x Earth)</span>
   </div>
   <div class="telem-item">
     <span class="telem-k">Small Moon Alt / Az</span>
     <span class="telem-v small" id="smallAltAz">&mdash;</span>
   </div>
   <div class="telem-item">
-    <span class="telem-k">Small Moon Phase</span>
-    <span class="telem-v" id="smallPhase">&mdash;</span>
+    <span class="telem-k">Small Moon Angular &Oslash;</span>
+    <span class="telem-v" id="smallAngSize">0.48&deg; (1x Earth)</span>
   </div>
   <div class="telem-item">
     <span class="telem-k">Sun Alt / Az</span>
@@ -256,25 +323,11 @@ select.field{font-size:11.5px;padding:6px 4px;}
   </div>
 </div>
 
-<!-- View Presets -->
-<div class="view-presets">
-  <button class="btn small" id="camTrackBig">Look at Big Moon</button>
-  <button class="btn small" id="camTrackSmall">Look at Small Moon</button>
-  <button class="btn small" id="camHorizon">South Horizon</button>
-  <button class="btn small" id="camZenith">Zenith</button>
-</div>
-<div class="compass-hint">Drag to rotate &bull; Scroll to zoom &bull; Ground clearing at 45&deg;N</div>
-
-<!-- Celestial 2D Billboards -->
-<div id="bigMoonTag" class="sky-tag big-moon">Big Moon</div>
-<div id="smallMoonTag" class="sky-tag small-moon">Small Moon</div>
-<div id="sunTag" class="sky-tag sun">Sun</div>
-
 <script>
 (function(){
 "use strict";
 
-/* ================= COSMOSSI ASTRONOMY & CALENDAR MODEL ================= */
+/* ================= 1. COSMOSSI CALENDAR & ASTRONOMY ================= */
 const BASE_MONTHS = [
   { name:"Çuanede", days:24 },
   { name:"Febreo", days:25 },
@@ -330,14 +383,12 @@ function absoluteDayToFictional(absDay){
   return { yearInEra, era, monthIdx, day:remaining, yearsElapsed:Y, yearLength:yearLength(Y), dayOfYear };
 }
 
-/* Constants derived from the world model */
 const TILT_DEG = 25.12;
-const OBSERVER_LAT_DEG = 45.0; // Reference latitude in Northern Hemisphere
-const MOON_ORBIT_PERIOD = 23.8506;  // days
-const HORSESHOE_PERIOD = 750.0;     // days
+const MOON_ORBIT_PERIOD = 23.8506;
+const HORSESHOE_PERIOD = 750.0;
 const CLOSEST_SEP_DEG = 15.0;
 const FARTHEST_SEP_DEG = 180.0;
-const MOON_EPOCH_ABS = fictionalAbsoluteDay(301, 5, 9, 17); // 17 Avessu, 301-5
+const MOON_EPOCH_ABS = fictionalAbsoluteDay(301, 5, 9, 17);
 
 const ANCHOR_REAL_MS = Date.UTC(2025, 0, 1);
 const ANCHOR_ABS = fictionalAbsoluteDay(300, 5, 0, 1);
@@ -361,7 +412,6 @@ function bigMoonLongitude(absDay){ return normalize360(moonMeanLongitude(absDay)
 function smallMoonLongitude(absDay){ return normalize360(moonMeanLongitude(absDay) - moonSeparationDeg(absDay)/2); }
 function sunLongitude(fic){ return normalize360(360 * (fic.dayOfYear - 1) / fic.yearLength); }
 
-/* Spherical coordinates conversion: Altitude & Azimuth */
 function getAltAz(hour, transitHour, declDeg, latDeg){
   const lat = latDeg * Math.PI / 180;
   const decl = declDeg * Math.PI / 180;
@@ -379,8 +429,6 @@ function getAltAz(hour, transitHour, declDeg, latDeg){
   return { alt, az, altDeg: alt * 180 / Math.PI, azDeg: az * 180 / Math.PI };
 }
 
-/* Convert Alt/Az to 3D celestial coordinates on dome of radius R
-   +X = East, +Y = Zenith, -Z = North, +Z = South, -X = West */
 function altAzToVec3(alt, az, R){
   const cosAlt = Math.cos(alt);
   const x = R * cosAlt * Math.sin(az);
@@ -389,332 +437,524 @@ function altAzToVec3(alt, az, R){
   return new THREE.Vector3(x, y, z);
 }
 
-function phaseDescription(elongDeg){
-  const e = normalize360(elongDeg);
-  if (e < 22.5 || e >= 337.5) return 'New Moon';
-  if (e < 67.5) return 'Waxing Crescent';
-  if (e < 112.5) return 'First Quarter';
-  if (e < 157.5) return 'Waxing Gibbous';
-  if (e < 202.5) return 'Full Moon';
-  if (e < 247.5) return 'Waning Gibbous';
-  if (e < 292.5) return 'Last Quarter';
-  return 'Waning Crescent';
+function formatLatString(lat){
+  if(Math.abs(lat) < 0.1) return '0.0° Equator';
+  return `${Math.abs(lat).toFixed(1)}° ${lat >= 0 ? 'N' : 'S'}`;
 }
 
-/* ================= 3D SCENE & AMBIANCE SETUP ================= */
+/* ================= 2. PROCEDURAL HIGH-RES LUNAR TEXTURES ================= */
+function generateMoonTexture(tintHue, isBump = false){
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 512;
+  const ctx = c.getContext('2d');
+  const imgData = ctx.createImageData(1024, 512);
+  const data = imgData.data;
+
+  for(let y=0; y<512; y++){
+    for(let x=0; x<1024; x++){
+      const idx = (y * 1024 + x) * 4;
+      const nx = Math.sin(x * 0.035) + Math.sin(x * 0.11);
+      const ny = Math.cos(y * 0.035) + Math.cos(y * 0.14);
+      const mare = Math.sin(x*0.012 + y*0.016) * 0.5 + 0.5;
+      let val = Math.floor(135 + (nx + ny) * 26 - (mare > 0.56 ? 50 : 0) + (Math.random() - 0.5) * 14);
+      val = Math.max(25, Math.min(255, val));
+
+      if(isBump){
+        data[idx] = val; data[idx+1] = val; data[idx+2] = val; data[idx+3] = 255;
+      } else {
+        if(tintHue === 'brass'){
+          data[idx] = Math.min(255, val * 1.10);
+          data[idx+1] = Math.min(255, val * 0.98);
+          data[idx+2] = Math.min(255, val * 0.80);
+        } else {
+          data[idx] = Math.min(255, val * 0.76);
+          data[idx+1] = Math.min(255, val * 1.08);
+          data[idx+2] = Math.min(255, val * 1.02);
+        }
+        data[idx+3] = 255;
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  ctx.fillStyle = isBump ? '#ffffff' : (tintHue === 'brass' ? '#f5eedb' : '#c2f0e8');
+  ctx.strokeStyle = isBump ? '#000000' : '#0c1018';
+  for(let i=0; i<85; i++){
+    const cx = Math.random() * 1024, cy = Math.random() * 512;
+    const cr = 2 + Math.random() * 16;
+    ctx.lineWidth = Math.max(1, cr * 0.2);
+    ctx.beginPath();
+    ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+    ctx.stroke();
+    if(cr > 9){
+      ctx.beginPath();
+      ctx.arc(cx, cy, cr * 0.16, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+const bigMoonTexture = generateMoonTexture('brass', false);
+const bigMoonBump = generateMoonTexture('brass', true);
+const smallMoonTexture = generateMoonTexture('verdigris', false);
+const smallMoonBump = generateMoonTexture('verdigris', true);
+
+/* ================= 3. THREE.JS SCENE SETUP ================= */
 const canvas = document.getElementById('webgl-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.0;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-const SKY_RADIUS = 180;
-scene.fog = new THREE.FogExp2(0x0a0d18, 0.005);
+const SKY_RADIUS = 400;
 
-const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.5, 600);
-camera.position.set(0, 3.2, 12); // Raised slightly above observer clearing
+// Camera on the coastal highway overlook: road level Y=21m, eye height 1.7m = 22.7m
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 950);
+camera.position.set(2, 22.7, 30);
 
-const controls = new THREE.OrbitControls(camera, renderer.domElement);
-controls.enableDamping = true;
-controls.dampingFactor = 0.05;
-controls.maxPolarAngle = Math.PI * 0.52; // Allow looking slightly below the tree horizon
-controls.minDistance = 2;
-controls.maxDistance = 50;
-controls.target.set(0, 4, 0);
+// Fog styled to the deep blue nocturnal wallpaper atmosphere
+scene.fog = new THREE.FogExp2(0x0c1132, 0.0022);
 
-/* Ambient & Sunlight */
-const ambientLight = new THREE.AmbientLight(0x1a223a, 0.6);
+const ambientLight = new THREE.AmbientLight(0x1a2152, 0.65);
 scene.add(ambientLight);
 
-const sunLight = new THREE.DirectionalLight(0xfff3db, 1.2);
+const sunLight = new THREE.DirectionalLight(0xfff5dc, 1.4);
+sunLight.castShadow = true;
+sunLight.shadow.mapSize.width = 1024;
+sunLight.shadow.mapSize.height = 1024;
+sunLight.shadow.camera.near = 10;
+sunLight.shadow.camera.far = 480;
 scene.add(sunLight);
 
-/* Starfield dome */
+/* ================= 4. REALISTIC STYLIZED SKY SHADER ================= */
+// Smooth spherical dome with deep indigo / ultramarine twilight gradient
+const skyGeo = new THREE.SphereGeometry(SKY_RADIUS, 32, 32);
+const skyMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide,
+  depthWrite: false,
+  uniforms: {
+    sunPosition: { value: new THREE.Vector3(0, 1, 0) },
+    sunAltitude: { value: 0.5 },
+    nightSkyColor: { value: new THREE.Color(0x070a24) },
+    zenithSkyColor: { value: new THREE.Color(0x141b52) },
+    horizonSkyColor: { value: new THREE.Color(0x28307c) },
+    sunsetGlowColor: { value: new THREE.Color(0xb85038) }
+  },
+  vertexShader: `
+    varying vec3 vWorldPosition;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPosition = worldPosition.xyz;
+      gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 sunPosition;
+    uniform float sunAltitude;
+    uniform vec3 nightSkyColor;
+    uniform vec3 zenithSkyColor;
+    uniform vec3 horizonSkyColor;
+    uniform vec3 sunsetGlowColor;
+    varying vec3 vWorldPosition;
+
+    void main() {
+      vec3 rayDir = normalize(vWorldPosition);
+      vec3 sunDir = normalize(sunPosition);
+      float y = max(0.0, rayDir.y);
+      float cosTheta = dot(rayDir, sunDir);
+
+      vec3 dayAtmosphere = mix(horizonSkyColor, zenithSkyColor, pow(y, 0.55));
+      float sunsetFactor = clamp(1.0 - abs(sunAltitude) * 3.6, 0.0, 1.0);
+      float sunGlow = pow(max(0.0, cosTheta), 4.0) * sunsetFactor * 1.8;
+      dayAtmosphere = mix(dayAtmosphere, sunsetGlowColor, clamp(sunGlow, 0.0, 1.0));
+
+      float dayFactor = smoothstep(-0.15, 0.25, sunAltitude);
+      vec3 finalSky = mix(nightSkyColor, dayAtmosphere, dayFactor);
+
+      if (dayFactor < 0.25) {
+        finalSky += vec3(0.02, 0.03, 0.07) * (1.0 - y);
+      }
+      gl_FragColor = vec4(finalSky, 1.0);
+    }
+  `
+});
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+/* Starfield */
 function createStarfield(){
-  const starCount = 2800;
-  const geometry = new THREE.BufferGeometry();
+  const starCount = 3500;
+  const geom = new THREE.BufferGeometry();
   const positions = new Float32Array(starCount * 3);
   const colors = new Float32Array(starCount * 3);
-
-  const starColors = [
-    new THREE.Color(0xffffff),
-    new THREE.Color(0xdce7ff),
-    new THREE.Color(0xffe8c2),
-    new THREE.Color(0xafe3db)
+  const starPalette = [
+    new THREE.Color(0xffffff), new THREE.Color(0xdce7ff),
+    new THREE.Color(0xfff0d0), new THREE.Color(0x99bbff)
   ];
 
   for(let i=0; i<starCount; i++){
-    const u = Math.random();
-    const v = Math.random();
-    const theta = u * 2.0 * Math.PI;
-    const phi = Math.acos(2.0 * v - 1.0);
-    const r = SKY_RADIUS * 1.05;
+    const u = Math.random(), v = Math.random();
+    const theta = u * 2.0 * Math.PI, phi = Math.acos(2.0 * v - 1.0);
+    const r = SKY_RADIUS * 0.98;
+    let y = Math.cos(phi) * r, x = Math.sin(phi) * Math.cos(theta) * r, z = Math.sin(phi) * Math.sin(theta) * r;
+    if(y < 8) y = -y + 10;
 
-    // Distribute across upper hemisphere mostly
-    const y = Math.abs(Math.cos(phi)) * r + 2;
-    const x = Math.sin(phi) * Math.cos(theta) * r;
-    const z = Math.sin(phi) * Math.sin(theta) * r;
-
-    positions[i*3] = x;
-    positions[i*3+1] = y;
-    positions[i*3+2] = z;
-
-    const c = starColors[Math.floor(Math.random() * starColors.length)];
-    colors[i*3] = c.r;
-    colors[i*3+1] = c.g;
-    colors[i*3+2] = c.b;
+    positions[i*3] = x; positions[i*3+1] = y; positions[i*3+2] = z;
+    const col = starPalette[Math.floor(Math.random() * starPalette.length)];
+    colors[i*3] = col.r; colors[i*3+1] = col.g; colors[i*3+2] = col.b;
   }
-  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
-  const material = new THREE.PointsMaterial({
-    size: 1.5,
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.85
-  });
-  return new THREE.Points(geometry, material);
+  geom.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geom.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return new THREE.Points(geom, new THREE.PointsMaterial({ size: 1.4, vertexColors: true, transparent: true, opacity: 0.9, sizeAttenuation: false }));
 }
 const starfield = createStarfield();
 scene.add(starfield);
 
-/* Celestial Guide: Ecliptic & Meridian Rings */
-const gridGroup = new THREE.Group();
-function createCelestialGrid(){
-  const circleGeom = new THREE.BufferGeometry();
-  const pts = [];
-  for(let i=0; i<=120; i++){
-    const th = (i/120)*Math.PI*2;
-    pts.push(new THREE.Vector3(Math.cos(th)*SKY_RADIUS, 0, Math.sin(th)*SKY_RADIUS));
-  }
-  circleGeom.setFromPoints(pts);
-  const horizonRing = new THREE.Line(circleGeom, new THREE.LineBasicMaterial({ color: 0xc9a15c, transparent:true, opacity:0.35 }));
-  gridGroup.add(horizonRing);
-
-  // Meridian Arc
-  const meridianPts = [];
-  for(let i=0; i<=60; i++){
-    const th = (i/60)*Math.PI;
-    meridianPts.push(new THREE.Vector3(0, Math.sin(th)*SKY_RADIUS, Math.cos(th)*SKY_RADIUS));
-  }
-  const meridianGeom = new THREE.BufferGeometry().setFromPoints(meridianPts);
-  const meridianLine = new THREE.Line(meridianGeom, new THREE.LineDashedMaterial({ color: 0x5fa89a, dashSize:2, gapSize:2, transparent:true, opacity:0.3 }));
-  meridianLine.computeLineDistances();
-  gridGroup.add(meridianLine);
-  gridGroup.visible = false;
-  scene.add(gridGroup);
-}
-createCelestialGrid();
-
-/* ================= AMBIENT GROUND CLEARING & TREES ================= */
-// Rolling meadow terrain disc
-const groundGeom = new THREE.CylinderGeometry(60, 62, 2, 48);
-const posAttr = groundGeom.attributes.position;
-for(let i=0; i<posAttr.count; i++){
-  const vx = posAttr.getX(i), vy = posAttr.getY(i), vz = posAttr.getZ(i);
-  if(vy > 0){
-    // Gentle natural mound
-    const dist = Math.sqrt(vx*vx + vz*vz);
-    const noise = Math.sin(vx * 0.15) * Math.cos(vz * 0.15) * 0.45;
-    posAttr.setY(i, vy + noise - (dist > 35 ? (dist-35)*0.08 : 0));
-  }
-}
-groundGeom.computeVertexNormals();
-const groundMat = new THREE.MeshStandardMaterial({
-  color: 0x0f181f,
-  roughness: 0.95,
-  metalness: 0.05
+/* ================= 5. COASTAL HIGHWAY & CLIFF GEOMETRY ================= */
+// 1. Endless Circular Ocean (Right side)
+const oceanGeo = new THREE.CircleGeometry(850, 64);
+oceanGeo.rotateX(-Math.PI / 2);
+const oceanMat = new THREE.MeshStandardMaterial({
+  color: 0x0f153d,
+  roughness: 0.18,
+  metalness: 0.82
 });
-const ground = new THREE.Mesh(groundGeom, groundMat);
-ground.position.y = -1;
-scene.add(ground);
+const ocean = new THREE.Mesh(oceanGeo, oceanMat);
+ocean.position.y = 0; // Sea level
+scene.add(ocean);
 
-// Central stone dais / astrolabe terrace
-const daisGeom = new THREE.CylinderGeometry(8.5, 9.2, 0.4, 32);
-const daisMat = new THREE.MeshStandardMaterial({ color: 0x181e2e, roughness: 0.85, metalness: 0.2 });
-const dais = new THREE.Mesh(daisGeom, daisMat);
-dais.position.y = 0.18;
-scene.add(dais);
-
-// Brass inlay ring on dais
-const ringGeom = new THREE.RingGeometry(7.6, 7.85, 48);
-const ringMat = new THREE.MeshBasicMaterial({ color: 0xc9a15c, side: THREE.DoubleSide });
-const ringMesh = new THREE.Mesh(ringGeom, ringMat);
-ringMesh.rotation.x = -Math.PI / 2;
-ringMesh.position.y = 0.40;
-scene.add(ringMesh);
-
-// Cardinal monoliths with glowing runes (N, E, S, W)
-const cardinalDirections = [
-  { label: 'N', x: 0, z: -8.8, color: 0xc9a15c },
-  { label: 'E', x: 8.8, z: 0, color: 0x5fa89a },
-  { label: 'S', x: 0, z: 8.8, color: 0xc9a15c },
-  { label: 'W', x: -8.8, z: 0, color: 0x7a6ba8 }
+// 2. High Faceted Sea Cliffs (Left side & Coastline)
+const cliffMaterials = [
+  new THREE.MeshStandardMaterial({ color: 0x141a45, roughness: 0.85, flatShading: true }), // dark base rock
+  new THREE.MeshStandardMaterial({ color: 0x222c6c, roughness: 0.82, flatShading: true }), // mid rock face
+  new THREE.MeshStandardMaterial({ color: 0x36449c, roughness: 0.78, flatShading: true })  // lit rock ridge
 ];
-cardinalDirections.forEach(c => {
-  const pillarGeom = new THREE.BoxGeometry(0.7, 2.2, 0.7);
-  const pillarMat = new THREE.MeshStandardMaterial({ color: 0x141829, roughness: 0.7 });
-  const pillar = new THREE.Mesh(pillarGeom, pillarMat);
-  pillar.position.set(c.x, 1.1, c.z);
-  scene.add(pillar);
 
-  // Glowing runic cap
-  const capGeom = new THREE.OctahedronGeometry(0.3, 0);
-  const capMat = new THREE.MeshBasicMaterial({ color: c.color });
-  const cap = new THREE.Mesh(capGeom, capMat);
-  cap.position.set(c.x, 2.4, c.z);
-  scene.add(cap);
+// Main towering cliff face rising on the left of the road
+const cliffGeo = new THREE.PlaneGeometry(320, 240, 24, 20);
+cliffGeo.rotateX(-Math.PI / 2);
+const cPos = cliffGeo.attributes.position;
+for(let i=0; i<cPos.count; i++){
+  const vx = cPos.getX(i), vz = cPos.getZ(i);
+  // Ridge rises sharply to the left (negative X) and plunges into the sea to the right (positive X)
+  let h = 0;
+  if(vx < -4){
+    // Towering mountain cliffs
+    h = 22 + Math.pow(Math.abs(vx + 4) * 0.32, 1.85) * 1.8 + Math.sin(vz * 0.08) * 12;
+  } else {
+    // Steep descent into the ocean
+    h = Math.max(0, 21 - Math.pow((vx - 4) * 0.16, 2.0) * 1.4);
+  }
+  // Faceted angular displacement
+  h += (Math.sin(vx * 0.15) * Math.cos(vz * 0.15)) * 4.5;
+  cPos.setY(i, h);
+}
+cliffGeo.computeVertexNormals();
+const mainCliff = new THREE.Mesh(cliffGeo, cliffMaterials[0]);
+mainCliff.receiveShadow = true;
+scene.add(mainCliff);
+
+// Distant Headlands receding into the ocean along the coast
+for(let k=1; k<=3; k++){
+  const headlandGeo = new THREE.ConeGeometry(38 + k*18, 55 + k*15, 7);
+  headlandGeo.rotateX(Math.PI);
+  const headland = new THREE.Mesh(headlandGeo, cliffMaterials[Math.min(2, k)]);
+  headland.position.set(18 + k*22, (25 + k*8) * 0.5, -90 - k*95);
+  headland.rotation.y = k * 1.2;
+  scene.add(headland);
+}
+
+// 3. The Winding Coastal Highway (Spline Ribbon)
+const roadCurve = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(14, 20.8, 65),
+  new THREE.Vector3(6, 21.2, 40),
+  new THREE.Vector3(-1, 21.6, 18),
+  new THREE.Vector3(-12, 22.2, -6),
+  new THREE.Vector3(-14, 22.8, -32),
+  new THREE.Vector3(-6, 23.4, -62),
+  new THREE.Vector3(4, 24.0, -96),
+  new THREE.Vector3(-2, 24.6, -145),
+  new THREE.Vector3(-15, 25.2, -200),
+  new THREE.Vector3(-8, 25.8, -265)
+]);
+
+const ROAD_WIDTH = 4.8;
+const roadPoints = roadCurve.getPoints(90);
+const roadGeom = new THREE.BufferGeometry();
+const roadVertices = [];
+const roadUvs = [];
+
+for(let i=0; i<roadPoints.length; i++){
+  const p = roadPoints[i];
+  const tangent = roadCurve.getTangent(i / (roadPoints.length - 1)).normalize();
+  const normal = new THREE.Vector3(0, 1, 0);
+  const binormal = new THREE.Vector3().crossVectors(tangent, normal).normalize();
+
+  const left = p.clone().addScaledVector(binormal, -ROAD_WIDTH * 0.5);
+  const right = p.clone().addScaledVector(binormal, ROAD_WIDTH * 0.5);
+
+  roadVertices.push(left.x, left.y + 0.15, left.z);
+  roadVertices.push(right.x, right.y + 0.15, right.z);
+
+  const u = i / (roadPoints.length - 1);
+  roadUvs.push(0, u, 1, u);
+}
+
+const roadIndices = [];
+for(let i=0; i<roadPoints.length - 1; i++){
+  const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2, d = (i + 1) * 2 + 1;
+  roadIndices.push(a, b, c);
+  roadIndices.push(b, d, c);
+}
+roadGeom.setIndex(roadIndices);
+roadGeom.setAttribute('position', new THREE.Float32BufferAttribute(roadVertices, 3));
+roadGeom.setAttribute('uv', new THREE.Float32BufferAttribute(roadUvs, 2));
+roadGeom.computeVertexNormals();
+
+const roadMat = new THREE.MeshStandardMaterial({
+  color: 0x48589a, // soft blue-purple asphalt matching wallpaper
+  roughness: 0.55,
+  metalness: 0.25
+});
+const roadMesh = new THREE.Mesh(roadGeom, roadMat);
+roadMesh.receiveShadow = true;
+scene.add(roadMesh);
+
+// Outer Ocean-Side Guardrail
+const postGeom = new THREE.CylinderGeometry(0.08, 0.08, 1.0, 5);
+const postMat = new THREE.MeshStandardMaterial({ color: 0x8a9df0, roughness: 0.4 });
+const railPoints = [];
+
+for(let i=0; i<roadPoints.length; i+=2){
+  const p = roadPoints[i];
+  const tangent = roadCurve.getTangent(i / (roadPoints.length - 1)).normalize();
+  const binormal = new THREE.Vector3().crossVectors(tangent, new THREE.Vector3(0,1,0)).normalize();
+  const railPos = p.clone().addScaledVector(binormal, ROAD_WIDTH * 0.5);
+
+  // Vertical guardrail post
+  const post = new THREE.Mesh(postGeom, postMat);
+  post.position.set(railPos.x, railPos.y + 0.65, railPos.z);
+  scene.add(post);
+
+  railPoints.push(new THREE.Vector3(railPos.x, railPos.y + 1.1, railPos.z));
+}
+const railCurve = new THREE.CatmullRomCurve3(railPoints);
+const railMesh = new THREE.Mesh(new THREE.TubeGeometry(railCurve, 80, 0.06, 6, false), postMat);
+scene.add(railMesh);
+
+// Glowing coastal surf lines along rocky promontory edges
+const surfMat = new THREE.LineBasicMaterial({ color: 0x829ae8, transparent: true, opacity: 0.5 });
+for(let s=0; s<4; s++){
+  const surfCurve = new THREE.CatmullRomCurve3([
+    new THREE.Vector3(12 + s*3, 0.4, -40 - s*50),
+    new THREE.Vector3(26 + s*6, 0.4, -60 - s*50),
+    new THREE.Vector3(16 + s*4, 0.4, -85 - s*50)
+  ]);
+  const surfLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(surfCurve.getPoints(24)), surfMat);
+  scene.add(surfLine);
+}
+
+/* ================= 6. FOREGROUND FLORA (AGAVE & CYPRESS) ================= */
+// Stylized Agave / Yucca plants with tall bloom stalks (matching the wallpaper bottom)
+function createAgavePlant(){
+  const agave = new THREE.Group();
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x090d24, roughness: 0.9, flatShading: true }); // dark silhouette
+  const leafGeom = new THREE.ConeGeometry(0.2, 1.4, 4);
+
+  // Rosette of stiff pointed succulent leaves
+  for(let i=0; i<16; i++){
+    const leaf = new THREE.Mesh(leafGeom, leafMat);
+    const ang = (i / 16) * Math.PI * 2;
+    leaf.rotation.z = 0.55 + Math.random() * 0.25;
+    leaf.rotation.y = ang;
+    leaf.position.set(Math.cos(ang)*0.25, 0.4, Math.sin(ang)*0.25);
+    agave.add(leaf);
+  }
+
+  // Tall central flower stalk with bloom pod
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.07, 2.8, 5), leafMat);
+  stalk.position.y = 1.4;
+  agave.add(stalk);
+
+  const bloom = new THREE.Mesh(new THREE.DodecahedronGeometry(0.28, 0), leafMat);
+  bloom.position.y = 2.8;
+  bloom.scale.set(0.8, 1.8, 0.8);
+  agave.add(bloom);
+
+  return agave;
+}
+
+// Position foreground agave plants on the road bank
+const agavePositions = [
+  new THREE.Vector3(5.5, 20.8, 38),
+  new THREE.Vector3(7.2, 20.5, 36),
+  new THREE.Vector3(4.2, 20.9, 41),
+  new THREE.Vector3(8.5, 20.2, 33)
+];
+agavePositions.forEach(p => {
+  const ag = createAgavePlant();
+  ag.position.copy(p);
+  scene.add(ag);
 });
 
-// Procedural stylized pine trees framing the sky
-function createStylizedTree(scale = 1.0){
+// Coastal Cypress Tree clinging below the bridge/promontory
+function createCypressTree(scale = 1.0){
   const tree = new THREE.Group();
-  const trunkGeom = new THREE.CylinderGeometry(0.25 * scale, 0.45 * scale, 3.5 * scale, 5);
-  const trunkMat = new THREE.MeshStandardMaterial({ color: 0x1b1310, roughness: 0.9 });
-  const trunk = new THREE.Mesh(trunkGeom, trunkMat);
-  trunk.position.y = 1.75 * scale;
+  const mat = new THREE.MeshStandardMaterial({ color: 0x080a1c, roughness: 0.9, flatShading: true });
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18*scale, 0.35*scale, 4*scale, 5), mat);
+  trunk.position.y = 2 * scale;
+  trunk.rotation.z = -0.15;
   tree.add(trunk);
 
-  const foliageLevels = 3;
-  for(let i=0; i<foliageLevels; i++){
-    const bottomR = (2.2 - i*0.5) * scale;
-    const coneH = (2.6 - i*0.4) * scale;
-    const coneGeom = new THREE.ConeGeometry(bottomR, coneH, 6);
-    const coneMat = new THREE.MeshStandardMaterial({
-      color: i === 0 ? 0x0f211d : (i===1 ? 0x132b25 : 0x183830),
-      roughness: 0.85
-    });
-    const cone = new THREE.Mesh(coneGeom, coneMat);
-    cone.position.y = (2.6 + i*1.6) * scale;
-    tree.add(cone);
+  // Flat windswept layered canopy
+  for(let i=0; i<3; i++){
+    const canopy = new THREE.Mesh(new THREE.CylinderGeometry((1.8 - i*0.4)*scale, (2.2 - i*0.4)*scale, 0.5*scale, 6), mat);
+    canopy.position.set(0.3 * i * scale, (3.2 + i*1.0) * scale, 0);
+    tree.add(canopy);
   }
   return tree;
 }
+const cypress = createCypressTree(1.2);
+cypress.position.set(8, 12, -28);
+scene.add(cypress);
 
-const treesGroup = new THREE.Group();
-const treeCount = 65;
-for(let i=0; i<treeCount; i++){
-  const angle = (i / treeCount) * Math.PI * 2 + (Math.random() - 0.5) * 0.15;
-  const dist = 18 + Math.random() * 26; // ring between 18 and 44 meters from center
-  const sc = 0.85 + Math.random() * 0.75;
-  const tree = createStylizedTree(sc);
-  tree.position.set(Math.cos(angle)*dist, 0, Math.sin(angle)*dist);
-  tree.rotation.y = Math.random() * Math.PI * 2;
-  treesGroup.add(tree);
-}
-scene.add(treesGroup);
+/* ================= 7. CELESTIAL BODIES (CALIBRATED REALISTIC SIZES) ================= */
+let isCinematicScale = false;
+const BASE_BIG_R = 2.4;
+const BASE_SMALL_R = 1.45;
+const BASE_SUN_R = 2.5;
 
-// Ambient floating fireflies / glowing motes
-const fireflyCount = 90;
-const fireflyGeom = new THREE.BufferGeometry();
-const fireflyPos = new Float32Array(fireflyCount * 3);
-for(let i=0; i<fireflyCount; i++){
-  fireflyPos[i*3] = (Math.random() - 0.5) * 28;
-  fireflyPos[i*3+1] = 0.8 + Math.random() * 3.5;
-  fireflyPos[i*3+2] = (Math.random() - 0.5) * 28;
-}
-fireflyGeom.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
-const fireflyMat = new THREE.PointsMaterial({
-  color: 0x8fe0d0,
-  size: 0.6,
-  transparent: true,
-  opacity: 0.75,
-  blending: THREE.AdditiveBlending
-});
-const fireflies = new THREE.Points(fireflyGeom, fireflyMat);
-scene.add(fireflies);
-
-/* ================= CELESTIAL BODIES (BIG MOON, SMALL MOON, SUN) ================= */
-// Helper to create glowing sprite aura
-function createGlowTexture(colorHex){
-  const c = document.createElement('canvas');
-  c.width = 128; c.height = 128;
+function createCircularGlow(colorHex, scale){
+  const c = document.createElement('canvas'); c.width = 128; c.height = 128;
   const ctx = c.getContext('2d');
-  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0, colorHex);
-  grad.addColorStop(0.35, colorHex);
-  grad.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
-  return new THREE.CanvasTexture(c);
+  const g = ctx.createRadialGradient(64,64,0, 64,64,62);
+  g.addColorStop(0, colorHex);
+  g.addColorStop(0.35, colorHex);
+  g.addColorStop(1, 'rgba(0,0,0,0)'); // strict true alpha zero at border: NO RECTANGLE
+  ctx.fillStyle = g; ctx.fillRect(0,0,128,128);
+
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(c),
+    blending: THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite: false // avoids square clipping against sky
+  }));
+  sp.scale.set(scale, scale, 1);
+  return sp;
 }
 
-// 1. Big Moon (Warm Brass / Gold)
+// 1. Big Moon
 const bigMoonGroup = new THREE.Group();
-const bigMoonGeom = new THREE.SphereGeometry(6.5, 36, 36);
-const bigMoonMat = new THREE.MeshStandardMaterial({
-  color: 0xe5ce9c,
-  roughness: 0.85,
-  metalness: 0.05,
-  emissive: 0x241d13, // Subtle planetshine on dark side
-  emissiveIntensity: 0.35
-});
-const bigMoonMesh = new THREE.Mesh(bigMoonGeom, bigMoonMat);
+const bigMoonMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(BASE_BIG_R, 48, 48),
+  new THREE.MeshStandardMaterial({
+    map: bigMoonTexture, bumpMap: bigMoonBump, bumpScale: 0.35,
+    roughness: 0.82, emissive: 0x1e1910, emissiveIntensity: 0.28
+  })
+);
 bigMoonGroup.add(bigMoonMesh);
-
-const bigGlowMat = new THREE.SpriteMaterial({
-  map: createGlowTexture('rgba(228,195,132,0.45)'),
-  blending: THREE.AdditiveBlending,
-  transparent: true
-});
-const bigGlowSprite = new THREE.Sprite(bigGlowMat);
-bigGlowSprite.scale.set(28, 28, 1);
-bigMoonGroup.add(bigGlowSprite);
+const bigMoonGlow = createCircularGlow('rgba(228,195,132,0.42)', 14);
+bigMoonGroup.add(bigMoonGlow);
 scene.add(bigMoonGroup);
 
-// 2. Small Moon (Teal / Verdigris)
+// 2. Small Moon
 const smallMoonGroup = new THREE.Group();
-const smallMoonGeom = new THREE.SphereGeometry(4.0, 32, 32);
-const smallMoonMat = new THREE.MeshStandardMaterial({
-  color: 0x8fe0d0,
-  roughness: 0.85,
-  metalness: 0.05,
-  emissive: 0x0f2421,
-  emissiveIntensity: 0.35
-});
-const smallMoonMesh = new THREE.Mesh(smallMoonGeom, smallMoonMat);
+const smallMoonMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(BASE_SMALL_R, 48, 48),
+  new THREE.MeshStandardMaterial({
+    map: smallMoonTexture, bumpMap: smallMoonBump, bumpScale: 0.35,
+    roughness: 0.82, emissive: 0x0f2420, emissiveIntensity: 0.28
+  })
+);
 smallMoonGroup.add(smallMoonMesh);
-
-const smallGlowMat = new THREE.SpriteMaterial({
-  map: createGlowTexture('rgba(95,168,154,0.5)'),
-  blending: THREE.AdditiveBlending,
-  transparent: true
-});
-const smallGlowSprite = new THREE.Sprite(smallGlowMat);
-smallGlowSprite.scale.set(18, 18, 1);
-smallMoonGroup.add(smallGlowSprite);
+const smallMoonGlow = createCircularGlow('rgba(95,168,154,0.42)', 10);
+smallMoonGroup.add(smallMoonGlow);
 scene.add(smallMoonGroup);
 
 // 3. Sun
 const sunGroup = new THREE.Group();
-const sunGeom = new THREE.SphereGeometry(8.0, 24, 24);
-const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff6cf });
-const sunMesh = new THREE.Mesh(sunGeom, sunMat);
+const sunMesh = new THREE.Mesh(
+  new THREE.SphereGeometry(BASE_SUN_R, 32, 32),
+  new THREE.MeshBasicMaterial({ color: 0xfff8d6 })
+);
 sunGroup.add(sunMesh);
-
-const sunGlowMat = new THREE.SpriteMaterial({
-  map: createGlowTexture('rgba(255,220,130,0.85)'),
-  blending: THREE.AdditiveBlending,
-  transparent: true
-});
-const sunGlowSprite = new THREE.Sprite(sunGlowMat);
-sunGlowSprite.scale.set(55, 55, 1);
-sunGroup.add(sunGlowSprite);
+const sunGlow = createCircularGlow('rgba(255,225,140,0.85)', 32);
+sunGroup.add(sunGlow);
 scene.add(sunGroup);
 
-/* ================= STATE & INTERACTIVITY ================= */
+function setMoonScale(cinematic){
+  isCinematicScale = cinematic;
+  const mult = cinematic ? 2.4 : 1.0;
+  bigMoonMesh.scale.setScalar(mult);
+  bigMoonGlow.scale.setScalar(14 * mult);
+  smallMoonMesh.scale.setScalar(mult);
+  smallMoonGlow.scale.setScalar(10 * mult);
+  sunMesh.scale.setScalar(mult);
+  sunGlow.scale.setScalar(32 * mult);
+
+  document.getElementById('scaleDisplay').textContent = cinematic ? 'Cinematic (2.4×)' : 'Realistic (0.8°)';
+  document.getElementById('bigAngSize').textContent = cinematic ? '1.9° (3.5x Earth)' : '0.78° (1.5x Earth)';
+  document.getElementById('smallAngSize').textContent = cinematic ? '1.2° (2.3x Earth)' : '0.48° (1x Earth)';
+}
+
+/* ================= 8. FIRST PERSON VIEW (MOUSE LOOK + WASD) ================= */
+let isPointerLocked = false;
+let yaw = 2.75; // Initial look direction: overlooking the scenic highway and coastline
+let pitch = 0.08;
+const mouseSensitivity = 0.0022;
+const keys = { w:false, a:false, s:false, d:false };
+const moveSpeed = 6.2;
+let walkBobTimer = 0;
+
+canvas.addEventListener('click', () => {
+  if(!isPointerLocked) canvas.requestPointerLock();
+});
+
+document.addEventListener('pointerlockchange', () => {
+  isPointerLocked = (document.pointerLockElement === canvas);
+  document.getElementById('crosshair').classList.toggle('active', isPointerLocked);
+  document.getElementById('fpvBanner').classList.toggle('hidden', isPointerLocked);
+});
+
+document.addEventListener('mousemove', e => {
+  if(!isPointerLocked) return;
+  yaw -= e.movementX * mouseSensitivity;
+  pitch -= e.movementY * mouseSensitivity;
+  pitch = Math.max(-1.48, Math.min(1.48, pitch));
+});
+
+window.addEventListener('keydown', e => {
+  if(e.code==='KeyW'||e.code==='ArrowUp') keys.w = true;
+  if(e.code==='KeyA'||e.code==='ArrowLeft') keys.a = true;
+  if(e.code==='KeyS'||e.code==='ArrowDown') keys.s = true;
+  if(e.code==='KeyD'||e.code==='ArrowRight') keys.d = true;
+});
+window.addEventListener('keyup', e => {
+  if(e.code==='KeyW'||e.code==='ArrowUp') keys.w = false;
+  if(e.code==='KeyA'||e.code==='ArrowLeft') keys.a = false;
+  if(e.code==='KeyS'||e.code==='ArrowDown') keys.s = false;
+  if(e.code==='KeyD'||e.code==='ArrowRight') keys.d = false;
+});
+
+/* ================= 9. STATE & ASTRONOMICAL UPDATE ================= */
 const state = {
   era: 5,
   yearInEra: 301,
-  monthIdx: 9, // Avessu (epoch month)
-  day: 17,     // epoch day (closest approach)
-  hour: 21.0,  // Evening observation
+  monthIdx: 9,
+  day: 17,
+  hour: 21.0,
+  observerLat: 36.3, // Big Sur latitude parallel
   isPlaying: false
 };
 
-// Populate Month Dropdown
 const monthSelect = document.getElementById('monthSelect');
 monthSelect.innerHTML = BASE_MONTHS.map((m, i) => `<option value="${i}">${m.name}</option>`).join('');
 
@@ -724,13 +964,15 @@ function syncInputControls(){
   document.getElementById('monthSelect').value = state.monthIdx;
   document.getElementById('dayInput').value = state.day;
   document.getElementById('timeSlider').value = state.hour;
+  document.getElementById('latSlider').value = state.observerLat;
+
   const hh = Math.floor(state.hour);
   const mm = Math.round((state.hour - hh) * 60);
   document.getElementById('timeDisplay').textContent =
     `${String(hh).padStart(2,'0')}:${String(mm===60?0:mm).padStart(2,'0')}`;
+  document.getElementById('latDisplay').textContent = formatLatString(state.observerLat);
 }
 
-// Compute & update 3D positions
 function updateAstralPositions(){
   const absDay = fictionalAbsoluteDay(state.yearInEra, state.era, state.monthIdx, state.day);
   const fic = absoluteDayToFictional(absDay);
@@ -751,172 +993,108 @@ function updateAstralPositions(){
   const transitBig = normalize24(12.0 + elongBig / 15.0);
   const transitSmall = normalize24(12.0 + elongSmall / 15.0);
 
-  // Compute Alt & Az
-  const sunCoords = getAltAz(state.hour, transitSun, declSun, OBSERVER_LAT_DEG);
-  const bigCoords = getAltAz(state.hour, transitBig, declBig, OBSERVER_LAT_DEG);
-  const smallCoords = getAltAz(state.hour, transitSmall, declSmall, OBSERVER_LAT_DEG);
+  const sunCoords = getAltAz(state.hour, transitSun, declSun, state.observerLat);
+  const bigCoords = getAltAz(state.hour, transitBig, declBig, state.observerLat);
+  const smallCoords = getAltAz(state.hour, transitSmall, declSmall, state.observerLat);
 
-  // Place 3D Spheres on sky dome
-  const sunPos = altAzToVec3(sunCoords.alt, sunCoords.az, SKY_RADIUS);
-  const bigPos = altAzToVec3(bigCoords.alt, bigCoords.az, SKY_RADIUS);
-  const smallPos = altAzToVec3(smallCoords.alt, smallCoords.az, SKY_RADIUS);
+  sunGroup.position.copy(altAzToVec3(sunCoords.alt, sunCoords.az, SKY_RADIUS * 0.94));
+  bigMoonGroup.position.copy(altAzToVec3(bigCoords.alt, bigCoords.az, SKY_RADIUS * 0.94));
+  smallMoonGroup.position.copy(altAzToVec3(smallCoords.alt, smallCoords.az, SKY_RADIUS * 0.94));
 
-  sunGroup.position.copy(sunPos);
-  bigMoonGroup.position.copy(bigPos);
-  smallMoonGroup.position.copy(smallPos);
+  bigMoonMesh.lookAt(sunGroup.position);
+  smallMoonMesh.lookAt(sunGroup.position);
 
-  // Directional Light from Sun illuminates the world & properly creates moon phases!
-  sunLight.position.copy(sunPos);
-  sunLight.target.position.set(0, 0, 0);
+  sunLight.position.copy(sunGroup.position);
 
-  // Dynamic Day/Night Lighting and Fog Atmosphere
-  const sunAltDeg = sunCoords.altDeg;
-  if(sunAltDeg > 2){ // Day
-    const dayFactor = Math.min(1, (sunAltDeg) / 30);
-    scene.background = new THREE.Color().lerpColors(new THREE.Color(0x131f38), new THREE.Color(0x274366), dayFactor);
-    scene.fog.color.copy(scene.background);
-    sunLight.intensity = 1.4 * dayFactor;
-    ambientLight.color.setHex(0x526585);
-    ambientLight.intensity = 0.7;
-    starfield.material.opacity = Math.max(0.05, 1 - dayFactor*1.2);
-  } else if(sunAltDeg > -12){ // Twilight / Sunset / Dawn
-    const twFactor = (sunAltDeg + 12) / 14;
-    scene.background = new THREE.Color().lerpColors(new THREE.Color(0x0a0d18), new THREE.Color(0x23182b), twFactor);
-    scene.fog.color.copy(scene.background);
-    sunLight.intensity = 0.5 * twFactor;
-    ambientLight.color.setHex(0x1a2136);
-    ambientLight.intensity = 0.45;
-    starfield.material.opacity = 0.65;
-  } else { // Full Deep Night
-    scene.background = new THREE.Color(0x060810);
-    scene.fog.color.setHex(0x060810);
+  skyMat.uniforms.sunPosition.value.copy(sunGroup.position);
+  skyMat.uniforms.sunAltitude.value = Math.sin(sunCoords.alt);
+
+  const sinAlt = Math.sin(sunCoords.alt);
+  if(sinAlt > 0.05){
+    sunLight.intensity = Math.min(1.8, sinAlt * 2.2);
+    ambientLight.color.setHex(0x384a6b);
+    starfield.material.opacity = Math.max(0.02, 1.0 - sinAlt * 3.0);
+  } else {
     sunLight.intensity = 0.0;
-    ambientLight.color.setHex(0x151c2e);
-    ambientLight.intensity = 0.35;
+    ambientLight.color.setHex(0x1a2152);
     starfield.material.opacity = 0.95;
   }
 
-  // Update UI Telemetry
   document.getElementById('calendarDateDisplay').textContent =
     `${BASE_MONTHS[state.monthIdx].name} ${state.day}, ${state.yearInEra}-${state.era}`;
 
   const cyclePos = ((absDay - MOON_EPOCH_ABS) % HORSESHOE_PERIOD + HORSESHOE_PERIOD) % HORSESHOE_PERIOD;
   const dFromClosest = Math.min(cyclePos, HORSESHOE_PERIOD - cyclePos);
-  const badge = document.getElementById('closestDaysBadge');
-  if(dFromClosest < 1.5){
-    badge.textContent = 'CONJUNCTION';
-    badge.className = 'telem-v alert';
-  } else {
-    badge.textContent = `${Math.round(dFromClosest)}d to Closest`;
-    badge.className = 'telem-v';
-  }
 
   document.getElementById('sepDisplay').textContent = `Sep: ${sepDeg.toFixed(1)}°`;
   document.getElementById('bigAltAz').textContent = `${bigCoords.altDeg.toFixed(1)}° / ${bigCoords.azDeg.toFixed(0)}°`;
-  document.getElementById('bigPhase').textContent = `${phaseDescription(elongBig)}`;
   document.getElementById('smallAltAz').textContent = `${smallCoords.altDeg.toFixed(1)}° / ${smallCoords.azDeg.toFixed(0)}°`;
-  document.getElementById('smallPhase').textContent = `${phaseDescription(elongSmall)}`;
   document.getElementById('sunAltAz').textContent = `${sunCoords.altDeg.toFixed(1)}° / ${sunCoords.azDeg.toFixed(0)}°`;
 
   const converging = cyclePos > HORSESHOE_PERIOD/2;
   document.getElementById('horseshoeState').textContent =
-    dFromClosest < 1.5 ? 'Peak Close Encounter' : (converging ? 'Converging' : 'Diverging');
+    dFromClosest < 1.5 ? 'Peak Conjunction' : (converging ? 'Converging' : 'Diverging');
 }
 
-// 2D HTML Billboard tags tracking the 3D celestial bodies
-const bigTag = document.getElementById('bigMoonTag');
-const smallTag = document.getElementById('smallMoonTag');
-const sunTag = document.getElementById('sunTag');
-
-function updateTags(){
-  function positionTag(tag, objPos, labelText){
-    const p = objPos.clone().project(camera);
-    // Hide if behind the camera
-    if(p.z > 1.0){
-      tag.style.opacity = '0';
-      return;
-    }
-    const x = (p.x * 0.5 + 0.5) * window.innerWidth;
-    const y = (-p.y * 0.5 + 0.5) * window.innerHeight;
-    tag.style.left = `${x}px`;
-    tag.style.top = `${y - 12}px`;
-    tag.style.opacity = '1';
-    tag.textContent = labelText;
-  }
-  positionTag(bigTag, bigMoonGroup.position, 'Big Moon');
-  positionTag(smallTag, smallMoonGroup.position, 'Small Moon');
-  positionTag(sunTag, sunGroup.position, 'Sun');
-}
-
-/* ================= EVENT LISTENERS ================= */
-document.getElementById('eraInput').addEventListener('change', e=>{
-  state.era = Math.max(1, parseInt(e.target.value, 10)||1);
-  updateAstralPositions();
-});
-document.getElementById('yearInput').addEventListener('change', e=>{
-  state.yearInEra = Math.max(0, parseInt(e.target.value, 10)||0);
-  updateAstralPositions();
-});
-document.getElementById('monthSelect').addEventListener('change', e=>{
-  state.monthIdx = parseInt(e.target.value, 10);
-  updateAstralPositions();
-});
-document.getElementById('dayInput').addEventListener('change', e=>{
-  state.day = Math.max(1, Math.min(26, parseInt(e.target.value, 10)||1));
-  updateAstralPositions();
-});
-document.getElementById('timeSlider').addEventListener('input', e=>{
-  state.hour = parseFloat(e.target.value);
-  syncInputControls();
-  updateAstralPositions();
+/* ================= 10. UI LISTENERS & PRESETS ================= */
+document.getElementById('eraInput').addEventListener('change', e=>{ state.era = Math.max(1, parseInt(e.target.value, 10)||1); updateAstralPositions(); });
+document.getElementById('yearInput').addEventListener('change', e=>{ state.yearInEra = Math.max(0, parseInt(e.target.value, 10)||0); updateAstralPositions(); });
+document.getElementById('monthSelect').addEventListener('change', e=>{ state.monthIdx = parseInt(e.target.value, 10); updateAstralPositions(); });
+document.getElementById('dayInput').addEventListener('change', e=>{ state.day = Math.max(1, Math.min(26, parseInt(e.target.value, 10)||1)); updateAstralPositions(); });
+document.getElementById('timeSlider').addEventListener('input', e=>{ state.hour = parseFloat(e.target.value); syncInputControls(); updateAstralPositions(); });
+document.getElementById('latSlider').addEventListener('input', e=>{
+  state.observerLat = parseFloat(e.target.value);
+  document.querySelectorAll('.preset-btn[data-lat]').forEach(b => b.classList.remove('active'));
+  syncInputControls(); updateAstralPositions();
 });
 
-// Jump Buttons
+document.querySelectorAll('.preset-btn[data-lat]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.preset-btn[data-lat]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    state.observerLat = parseFloat(btn.getAttribute('data-lat'));
+    syncInputControls(); updateAstralPositions();
+  });
+});
+
+document.getElementById('scaleRealisticBtn').addEventListener('click', () => {
+  document.getElementById('scaleRealisticBtn').classList.add('active');
+  document.getElementById('scaleCinematicBtn').classList.remove('active');
+  setMoonScale(false);
+});
+document.getElementById('scaleCinematicBtn').addEventListener('click', () => {
+  document.getElementById('scaleCinematicBtn').classList.add('active');
+  document.getElementById('scaleRealisticBtn').classList.remove('active');
+  setMoonScale(true);
+});
+
+const card = document.getElementById('controlsCard');
+const icon = document.getElementById('toggleIcon');
+document.getElementById('cardHeaderToggle').addEventListener('click', () => {
+  card.classList.toggle('minimized');
+  icon.innerHTML = card.classList.contains('minimized') ? '&plus;' : '&minus;';
+});
+
 document.getElementById('closestBtn').addEventListener('click', ()=>{
   state.era = 5; state.yearInEra = 301; state.monthIdx = 9; state.day = 17; state.hour = 21.0;
-  syncInputControls();
-  updateAstralPositions();
+  syncInputControls(); updateAstralPositions();
 });
 document.getElementById('todayBtn').addEventListener('click', ()=>{
   const now = realToFictional(Date.now());
-  state.era = now.era; state.yearInEra = now.yearInEra;
-  state.monthIdx = now.monthIdx; state.day = now.day;
-  syncInputControls();
-  updateAstralPositions();
+  state.era = now.era; state.yearInEra = now.yearInEra; state.monthIdx = now.monthIdx; state.day = now.day;
+  syncInputControls(); updateAstralPositions();
 });
-
-// Toggle Grid
-document.getElementById('toggleGridBtn').addEventListener('click', e=>{
-  gridGroup.visible = !gridGroup.visible;
-  e.target.classList.toggle('active', gridGroup.visible);
-});
-
-// Play / Pause Animation
-const playBtn = document.getElementById('playPauseBtn');
-playBtn.addEventListener('click', ()=>{
+document.getElementById('playPauseBtn').addEventListener('click', e=>{
   state.isPlaying = !state.isPlaying;
-  playBtn.innerHTML = state.isPlaying ? '&#10074;&#10074; Pause' : '&#9654; Play Time';
-  playBtn.classList.toggle('active', state.isPlaying);
+  e.target.innerHTML = state.isPlaying ? '&#10074;&#10074; Pause' : '&#9654; Play Time';
+  e.target.classList.toggle('active', state.isPlaying);
 });
 
-// Camera Tracking Buttons
-function smoothLookAt(targetVec){
-  const startTarget = controls.target.clone();
-  const startTime = performance.now();
-  const duration = 800;
-  function anim(now){
-    const t = Math.min(1, (now - startTime) / duration);
-    const ease = 0.5 - 0.5 * Math.cos(t * Math.PI);
-    controls.target.lerpVectors(startTarget, targetVec, ease);
-    if(t < 1) requestAnimationFrame(anim);
-  }
-  requestAnimationFrame(anim);
-}
-
-document.getElementById('camTrackBig').addEventListener('click', ()=> smoothLookAt(bigMoonGroup.position));
-document.getElementById('camTrackSmall').addEventListener('click', ()=> smoothLookAt(smallMoonGroup.position));
-document.getElementById('camHorizon').addEventListener('click', ()=> smoothLookAt(new THREE.Vector3(0, 4, 30)));
-document.getElementById('camZenith').addEventListener('click', ()=> smoothLookAt(new THREE.Vector3(0, SKY_RADIUS, 0)));
+// View Highway Button
+document.getElementById('lookCoastBtn').addEventListener('click', ()=>{
+  yaw = 2.75;
+  pitch = 0.08;
+});
 
 window.addEventListener('resize', ()=>{
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -924,34 +1102,57 @@ window.addEventListener('resize', ()=>{
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-/* ================= ANIMATION LOOP ================= */
+/* ================= 11. MAIN ANIMATION LOOP ================= */
 let lastTime = performance.now();
+
 function animate(currentTime){
   requestAnimationFrame(animate);
 
-  const delta = (currentTime - lastTime) * 0.001;
+  const delta = Math.min(0.1, (currentTime - lastTime) * 0.001);
   lastTime = currentTime;
 
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = yaw;
+  camera.rotation.x = pitch;
+
+  // WASD Walking along the coastal road
+  if(keys.w || keys.a || keys.s || keys.d){
+    const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw)).normalize();
+    const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).normalize();
+    const moveDir = new THREE.Vector3();
+
+    if(keys.w) moveDir.add(forward);
+    if(keys.s) moveDir.sub(forward);
+    if(keys.d) moveDir.add(right);
+    if(keys.a) moveDir.sub(right);
+
+    if(moveDir.lengthSq() > 0){
+      moveDir.normalize();
+      camera.position.addScaledVector(moveDir, moveSpeed * delta);
+      walkBobTimer += delta * 12;
+      camera.position.y = 22.7 + Math.sin(walkBobTimer) * 0.04;
+    }
+
+    // Safety bounds: keep player on the highway / coastal outlook
+    camera.position.x = Math.max(-18, Math.min(18, camera.position.x));
+    camera.position.z = Math.max(-60, Math.min(50, camera.position.z));
+  } else {
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, 22.7, delta * 8);
+  }
+
+  // Time scrub
   if(state.isPlaying){
-    state.hour = (state.hour + delta * 1.5) % 24; // Smooth time scrub
+    state.hour = (state.hour + delta * 1.6) % 24;
     syncInputControls();
     updateAstralPositions();
   }
 
-  // Gentle firefly bobbing
-  const posArr = fireflies.geometry.attributes.position.array;
-  for(let i=0; i<fireflyCount; i++){
-    posArr[i*3+1] += Math.sin(currentTime * 0.002 + i) * 0.004;
-  }
-  fireflies.geometry.attributes.position.needsUpdate = true;
-
-  controls.update();
-  updateTags();
   renderer.render(scene, camera);
 }
 
 syncInputControls();
 updateAstralPositions();
+setMoonScale(false); // Default to realistic calibrated size
 requestAnimationFrame(animate);
 
 })();
