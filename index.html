@@ -451,14 +451,14 @@ const BASE_MONTHS = [
   { name:"Açarra", days:25 },
   { name:"Sebina", days:24 },
   { name:"Primechelli", days:24 },
-  { name:"Iuno", days:24 },
-  { name:"Iulia", days:24 },
+  { name:"Rania", days:24 },
+  { name:"Maiossa", days:24 },
   { name:"Avessu", days:24 },
   { name:"Edusechelli", days:24 },
   { name:"Primeneimalle", days:25 },
   { name:"Primelaure", days:24 },
   { name:"Novum", days:24 },
-  { name:"Deccem", days:25 }
+  { name:"Sebolle", days:25 }
 ];
 const MONTHS = BASE_MONTHS; // baseline (non-leap) month list, used where leap-awareness doesn't matter
 const BASE_YEAR_LENGTH = BASE_MONTHS.reduce((a,m)=>a+m.days,0); // 365
@@ -467,7 +467,7 @@ const LEAP_INTERVAL_YEARS = 6; // one leap day added to the last month every 6 y
 
 /* ---- leap-year helpers ----
    Every 6th year (counted continuously across eras) gets one extra day
-   tacked onto the final month, Deccem. */
+   tacked onto the final month, Sebolle. */
 function yearsElapsedTotal(era, yearInEra){ return (era - 1) * YEARS_PER_ERA + yearInEra; }
 function isLeapYear(yrsElapsed){ return yrsElapsed % LEAP_INTERVAL_YEARS === 0; }
 function yearLength(yrsElapsed){ return BASE_YEAR_LENGTH + (isLeapYear(yrsElapsed) ? 1 : 0); }
@@ -490,15 +490,15 @@ const WEEKDAYS = [
 ];
 
 const ERAS = {
-  1:{ name:"Pre-Civilization Era", desc:"Predates recognizable cultures and countries &mdash; primitive societies of various humanoid species struggle to survive as geography and ecosystems remain in flux." },
-  2:{ name:"Rise of Sivasta", desc:"Small settlements share a common identity, culminating in the War of Unification and the formation of the united nation of Sivasta under the Pact of the People." },
-  3:{ name:"Sivasta's Ascendancy", desc:"Sivasta emerges as a dominant global power alongside Sirius and a Roman-parallel empire, in a Classical Era of alliances, trade, and conflict." },
-  4:{ name:"Medieval Era", desc:"Feudalism, chivalry, and magic define the age, with wizarding orders and legendary knights rising alongside technological and societal change." },
-  5:{ name:"Modern Era", desc:"Industrialization, technological advancement, and colonial expansion drive nations across the nine continents into competition and political turmoil." },
-  6:{ name:"Post-Modern Era", desc:"A futuristic age of advanced technology, space exploration, and interconnected societies, wrestling with artificial intelligence and the ethics of progress." }
+  1:{ name:"Pre-Civilization Era" },
+  2:{ name:"Rise of Sivasta" },
+  3:{ name:"Sivasta's Ascendancy" },
+  4:{ name:"Medieval Era" },
+  5:{ name:"Modern Era" },
+  6:{ name:"Post-Modern Era" }
 };
 function eraInfo(e){
-  return ERAS[e] || { name:"Uncharted Era", desc:"This era lies beyond the recorded history of Cosmossi &mdash; a chapter yet to be written." };
+  return ERAS[e] || { name:"Uncharted Era" };
 }
 
 const COLORS = [
@@ -772,7 +772,7 @@ function renderEraControls(){
   document.getElementById('eraInput').value = view.era;
   document.getElementById('yearInput').value = view.yearInEra;
   const info = eraInfo(view.era);
-  document.getElementById('eraDesc').innerHTML = `<b>Era ${view.era}: ${info.name}.</b> ${info.desc}`;
+  document.getElementById('eraDesc').innerHTML = `<b>Era ${view.era}: ${info.name}</b>`;
 }
 
 /* ================= RENDER: calendar grid ================= */
